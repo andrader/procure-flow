@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import axios from "axios";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { Button } from "@/components/ui/button";
@@ -73,23 +72,11 @@ function ChatContent() {
     if (!message.text?.trim() && (!message.files || message.files.length === 0)) return;
 
     // Send message to AI - useChat will handle adding it to messages automatically
+    // The AI will use the searchProducts tool when appropriate
     sendMessage({ text: message.text ?? "", files: message.files });
     
     // Clear the input immediately after submitting
     textInput.setInput("");
-
-    // Optionally search products in parallel for better UX
-    if (message.text?.trim()) {
-      try {
-        await axios.get(`${API_BASE}/api/products`, {
-          params: { q: message.text },
-        });
-        // Product results could be handled via tool calling or custom data parts
-        // For now, we let the AI assistant provide guidance
-      } catch (err) {
-        console.error("Product search error:", err);
-      }
-    }
   };
 
   const onRegistered = (product?: Product) => {
@@ -174,6 +161,53 @@ function ChatContent() {
                                     className="max-w-xs rounded-lg mt-2"
                                   />
                                 );
+                              // Handle searchProducts tool calls
+                              case "tool-searchProducts": {
+                                const callId = part.toolCallId;
+                                
+                                switch (part.state) {
+                                  case "input-streaming":
+                                    return (
+                                      <div key={callId} className="text-sm text-muted-foreground italic">
+                                        Searching catalog...
+                                      </div>
+                                    );
+                                  case "input-available":
+                                    return (
+                                      <div key={callId} className="text-sm text-muted-foreground italic">
+                                        Searching for: {(part.input as { query: string }).query}
+                                      </div>
+                                    );
+                                  case "output-available": {
+                                    // Display products from tool output
+                                    const output = part.output as {
+                                      count: number;
+                                      products: Product[];
+                                      message: string;
+                                    };
+                                    
+                                    if (output.products && output.products.length > 0) {
+                                      return (
+                                        <div key={callId} className="w-full">
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full mt-2">
+                                            {output.products.map((product) => (
+                                              <ProductCard key={product.id} product={product} />
+                                            ))}
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }
+                                  case "output-error":
+                                    return (
+                                      <div key={callId} className="text-sm text-destructive">
+                                        Error searching products: {part.errorText}
+                                      </div>
+                                    );
+                                }
+                                break;
+                              }
                               default:
                                 return null;
                             }

@@ -1,7 +1,8 @@
 import express, { type Request, type Response, type NextFunction } from "express";
 import { products, conversations, addProduct, type Product } from "./data.js";
-import { convertToModelMessages, streamText } from "ai";
+import { convertToModelMessages, streamText, tool, stepCountIs } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { z } from "zod";
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -134,6 +135,55 @@ app.post("/api/checkout", (req: Request, res: Response) => {
   res.json({ success: true, message: `Order confirmed for ${Array.isArray(cart) ? cart.length : 0} items.`, total });
 });
 
+// Tool function: Search products in the catalog
+async function searchProductsTool({ query }: { query: string }) {
+  console.log(`[Tool] Searching products for: "${query}"`);
+  
+  // Normalize search logic (same as GET /api/products)
+  const normalize = (s: string | undefined): string =>
+    String(s || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .replace(/\s+/g, " ");
+
+  const STOPWORDS = new Set(["show", "me", "find", "finds", "please", "items", "item", "matching", "the", "a", "an", "for"]);
+
+  const tokens = normalize(query)
+    .split(" ")
+    .map((t) => t.trim())
+    .filter((t) => t && !STOPWORDS.has(t));
+
+  const filtered = products.filter((p: Product) => {
+    const hay = normalize([p.name, p.description, p.category].filter(Boolean).join(" "));
+    return tokens.every((tok) => {
+      if (!tok) return true;
+      if (hay.includes(tok)) return true;
+      if (tok.endsWith("s") && hay.includes(tok.slice(0, -1))) return true;
+      return false;
+    });
+  });
+
+  console.log(`[Tool] Found ${filtered.length} products`);
+
+  // Return structured data that the AI can use
+  return {
+    count: filtered.length,
+    products: filtered.slice(0, 10).map(p => ({
+      id: p.id,
+      name: p.name,
+      category: p.category,
+      description: p.description,
+      price: p.price,
+      status: p.status,
+      images: p.images || [], // Include images array
+    })),
+    message: filtered.length === 0 
+      ? `No products found for "${query}"`
+      : `Found ${filtered.length} product${filtered.length === 1 ? '' : 's'} matching "${query}"`,
+  };
+}
+
 // AI chat endpoint - streams UI messages compatible with @ai-sdk/react useChat
 app.post("/api/chat", async (req: Request, res: Response) => {
   console.log("Received /api/chat request");
@@ -146,10 +196,27 @@ app.post("/api/chat", async (req: Request, res: Response) => {
     }
 
     const result = streamText({
-      model: openai("gpt-5-nano"),
-      system: "You are ProcureFlow's helpful assistant. Be concise. When users search for products, summarize and guide next actions like adding to cart or registering items.",
-      // Convert UI messages from the client to provider messages
+      model: openai("gpt-4o-mini"),
+      system: `You are ProcureFlow's helpful assistant. You help users find products in the procurement catalog.
+      
+When users ask about products:
+1. Use the searchProducts tool to search the catalog
+2. Summarize the results in a friendly way
+3. Suggest next actions like adding items to cart or registering new items
+
+Be concise and helpful.`,
       messages: convertToModelMessages(messages),
+      // Enable multi-step tool calling
+      stopWhen: stepCountIs(5),
+      tools: {
+        searchProducts: tool({
+          description: 'Search for products in the procurement catalog. Use this when users ask about items, materials, equipment, or want to find something.',
+          inputSchema: z.object({
+            query: z.string().describe('The search query to find products'),
+          }),
+          execute: searchProductsTool,
+        }),
+      },
     });
 
     // Convert to Response object and pipe to Express response
