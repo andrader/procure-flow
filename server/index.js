@@ -21,10 +21,39 @@ app.get("/api/health", (req, res) => {
 
 // Products list
 app.get("/api/products", (req, res) => {
-  const q = (req.query.q || "").toString().toLowerCase();
+  const qRaw = (req.query.q || "").toString();
+  const q = qRaw.trim();
   if (q) {
-    const filtered = products.filter((p) => p.name.toLowerCase().includes(q) || (p.description || "").toLowerCase().includes(q));
-    return res.json({ count: filtered.length, data: filtered });
+    // Normalize a string: lowercase, replace non-alphanum with spaces, collapse spaces
+    const normalize = (s) =>
+      String(s || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim()
+        .replace(/\s+/g, " ");
+
+    // Basic stopwords to ignore from casual queries like "show me" etc.
+    const STOPWORDS = new Set(["show", "me", "find", "finds", "please", "items", "item", "matching", "the", "a", "an", "for"]);
+
+    const tokens = normalize(q)
+      .split(" ")
+      .map((t) => t.trim())
+      .filter((t) => t && !STOPWORDS.has(t));
+
+    const filtered = products.filter((p) => {
+      const hay = normalize([p.name, p.description, p.category].filter(Boolean).join(" "));
+      // every token must appear in the haystack (allow simple plural match)
+      return tokens.every((tok) => {
+        if (!tok) return true;
+        if (hay.includes(tok)) return true;
+        // naive plural handling: if token ends with 's', try without it
+        if (tok.endsWith("s") && hay.includes(tok.slice(0, -1))) return true;
+        // if token is two-char like 'usb' and next token is 'c', also accept combined 'usb c' matching
+        return false;
+      });
+    });
+
+    return res.json({ count: filtered.length, data: filtered, query: qRaw });
   }
   res.json({ count: products.length, data: products });
 });
