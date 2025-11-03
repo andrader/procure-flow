@@ -8,12 +8,11 @@ import {
   PromptInputSpeechButton,
   PromptInputAttachments,
   PromptInputAttachment,
-  PromptInputActionMenu,
-  PromptInputActionMenuTrigger,
-  PromptInputActionMenuContent,
-  PromptInputActionAddAttachments,
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
+import { useProviderAttachments } from "@/components/ai-elements/prompt-input";
+import { ImageIcon } from "lucide-react";
+import { PromptInputButton } from "./prompt-input";
 
 type SharedPromptInputProps = {
   onSubmit: (message: PromptInputMessage, e: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
@@ -30,8 +29,14 @@ export function SharedPromptInput({
   accept,
   multiple,
 }: SharedPromptInputProps) {
+  const attachments = useProviderAttachments();
   return (
-    <PromptInput onSubmit={onSubmit} accept={accept} multiple={multiple}>
+    <PromptInput
+      onSubmit={onSubmit}
+      accept={accept}
+      multiple={multiple}
+      className="rounded-2xl md:rounded-3xl"
+    >
       <PromptInputHeader>
         <PromptInputTools>
           <PromptInputAttachments>
@@ -42,15 +47,22 @@ export function SharedPromptInput({
       <PromptInputTextarea placeholder={placeholder} ref={textareaRef} />
       <PromptInputFooter>
         <PromptInputTools>
-          <PromptInputActionMenu>
-            <PromptInputActionMenuTrigger />
-            <PromptInputActionMenuContent>
-              <PromptInputActionAddAttachments />
-            </PromptInputActionMenuContent>
-          </PromptInputActionMenu>
-          <PromptInputSpeechButton textareaRef={textareaRef} />
+          <PromptInputButton
+            size="sm"
+            variant="ghost"
+            className="px-2"
+            onClick={() => attachments.openFileDialog()}
+            aria-label="Add pictures"
+            title="Add pictures"
+          >
+            <ImageIcon className="size-4 mr-1.5" />
+            Add pictures
+          </PromptInputButton>
         </PromptInputTools>
-        <PromptInputSubmit />
+        <div className="flex items-center gap-1">
+          <PromptInputSpeechButton textareaRef={textareaRef} />
+          <PromptInputSubmit />
+        </div>
       </PromptInputFooter>
     </PromptInput>
   );
