@@ -1,5 +1,7 @@
 import express, { type Request, type Response, type NextFunction } from "express";
 import { products, conversations, addProduct, type Product } from "./data.js";
+import { searchProductsTool } from "./tools/searchProducts.js";
+import { addToCartTool } from "./tools/addToCart.js";
 import { convertToModelMessages, streamText, tool, stepCountIs } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
@@ -135,87 +137,6 @@ app.post("/api/checkout", (req: Request, res: Response) => {
   res.json({ success: true, message: `Order confirmed for ${Array.isArray(cart) ? cart.length : 0} items.`, total });
 });
 
-// Tool function: Search products in the catalog
-async function searchProductsTool({ query }: { query: string }) {
-  console.log(`[Tool] Searching products for: "${query}"`);
-  
-  // Normalize search logic (same as GET /api/products)
-  const normalize = (s: string | undefined): string =>
-    String(s || "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, " ")
-      .trim()
-      .replace(/\s+/g, " ");
-
-  const STOPWORDS = new Set(["show", "me", "find", "finds", "please", "items", "item", "matching", "the", "a", "an", "for"]);
-
-  const tokens = normalize(query)
-    .split(" ")
-    .map((t) => t.trim())
-    .filter((t) => t && !STOPWORDS.has(t));
-
-  const filtered = products.filter((p: Product) => {
-    const hay = normalize([p.name, p.description, p.category].filter(Boolean).join(" "));
-    return tokens.every((tok) => {
-      if (!tok) return true;
-      if (hay.includes(tok)) return true;
-      if (tok.endsWith("s") && hay.includes(tok.slice(0, -1))) return true;
-      return false;
-    });
-  });
-
-  console.log(`[Tool] Found ${filtered.length} products`);
-
-  // Return structured data that the AI can use
-  return {
-    count: filtered.length,
-    products: filtered.slice(0, 10).map(p => ({
-      id: p.id,
-      name: p.name,
-      category: p.category,
-      description: p.description,
-      price: p.price,
-      status: p.status,
-      images: p.images || [], // Include images array
-    })),
-    message: filtered.length === 0 
-      ? `No products found for "${query}"`
-      : `Found ${filtered.length} product${filtered.length === 1 ? '' : 's'} matching "${query}"`,
-  };
-}
-
-// Tool function: Add product to cart (returns data for client to update cart)
-async function addToCartTool({
-  productId,
-  quantity = 1,
-}: {
-  productId: string;
-  quantity?: number;
-}) {
-  console.log(`[Tool] addToCart productId=${productId} quantity=${quantity}`);
-  const product = products.find((p) => p.id === productId);
-  if (!product) {
-    return {
-      success: false as const,
-      message: `Product not found: ${productId}`,
-    };
-  }
-  const q = Math.max(1, Math.min(999, Math.floor(Number(quantity) || 1)));
-  return {
-    success: true as const,
-    message: `Added ${q} × ${product.name} to cart`,
-    quantity: q,
-    product: {
-      id: product.id,
-      name: product.name,
-      category: product.category,
-      description: product.description,
-      price: product.price,
-      status: product.status,
-      images: product.images || [],
-    },
-  };
-}
 
 // AI chat endpoint - streams UI messages compatible with @ai-sdk/react useChat
 app.post("/api/chat", async (req: Request, res: Response) => {
