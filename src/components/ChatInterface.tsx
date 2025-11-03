@@ -10,7 +10,6 @@ import { useCart } from "@/contexts/CartContext";
 import {
   Conversation,
   ConversationContent,
-  ConversationEmptyState,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import {
@@ -167,42 +166,169 @@ function ChatContent() {
     return () => window.removeEventListener("new-chat", handler);
   }, [textInput]);
 
+  const hasMessages = messages.length > 0;
+
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Messages Area */}
-      <Conversation>
-        <AutoScroll messages={messages} />
-        {messages.length === 0 ? (
-          <ConversationEmptyState
-            title="Welcome to ProcureFlow"
-            description="How Can I Assist You Today?"
-            className="max-w-2xl mx-auto"
-          >
-            <div className="space-y-8">
-              {/* Orbital Gradient */}
-              <div className="relative mx-auto w-40 h-40 mb-8">
-                <div className="absolute inset-0 gradient-orb rounded-full shadow-glow animate-pulse"></div>
-                <div className="absolute inset-4 bg-background rounded-full"></div>
-                <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-background/50 rounded-full"></div>
+      {hasMessages ? (
+        <>
+          {/* Messages Area */}
+          <Conversation>
+            <AutoScroll messages={messages} />
+            <ConversationContent>
+              <div className="w-full px-4 md:px-6 space-y-6">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    {message.role === "user" ? (
+                      <div className="max-w-2xl rounded-2xl px-4 py-3 bg-primary text-primary-foreground">
+                        <p>{message.content}</p>
+                      </div>
+                    ) : (
+                      <div className="w-full max-w-full space-y-3">
+                        <p className="text-foreground">{message.content}</p>
+                        {isProductsMessage(message) && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
+                            {message.data.map((product) => (
+                              <ProductCard
+                                key={product.id}
+                                product={product}
+                                onAddToCart={addToCart}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </ConversationContent>
+            <ConversationScrollButton />
+          </Conversation>
+
+          {/* Input at bottom when there are messages */}
+          <div className="p-4">
+            <div className="max-w-3xl mx-auto">
+              <PromptInput onSubmit={handleSubmit} accept="image/*" multiple>
+                <PromptInputHeader>
+                  <PromptInputTools>
+                    <PromptInputAttachments>
+                      {(attachment) => <PromptInputAttachment data={attachment} />}
+                    </PromptInputAttachments>
+                  </PromptInputTools>
+                </PromptInputHeader>
+                <PromptInputTextarea
+                  placeholder="Search or register new products, add to cart and buy, or ask anything..."
+                  ref={textareaRef}
+                />
+                <PromptInputFooter>
+                  <PromptInputTools>
+                    <PromptInputActionMenu>
+                      <PromptInputActionMenuTrigger />
+                      <PromptInputActionMenuContent>
+                        <PromptInputActionAddAttachments />
+                      </PromptInputActionMenuContent>
+                    </PromptInputActionMenu>
+                    <PromptInputSpeechButton textareaRef={textareaRef} />
+                  </PromptInputTools>
+                  <PromptInputSubmit />
+                </PromptInputFooter>
+              </PromptInput>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-center gap-2 flex-wrap mt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full h-8 text-xs"
+                  onClick={() => setRegisterOpen(true)}
+                >
+                  <Package className="w-3.5 h-3.5 mr-1.5" />
+                  Register Item
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full h-8 text-xs"
+                  onClick={() => openCart()}
+                >
+                  <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
+                  Cart ({cart.length})
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full h-8 text-xs"
+                  onClick={() => setCheckoutOpen(true)}
+                  disabled={cart.length === 0}
+                >
+                  <CreditCard className="w-3.5 h-3.5 mr-1.5" />
+                  Checkout
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        // Initial state: hero at top of column, chat input centered, suggestions directly under input
+        <div className="flex flex-col h-full">
+          <div className="flex-1 px-4 md:px-6">
+            <div className="max-w-3xl mx-auto h-full flex flex-col items-stretch justify-center py-8">
+              {/* Hero (Welcome to ProcureFlow) */}
+              <div className="space-y-8 text-center">
+                {/* Orbital Gradient */}
+                <div className="relative mx-auto w-40 h-40 mb-4">
+                  <div className="absolute inset-0 gradient-orb rounded-full shadow-glow animate-pulse"></div>
+                  <div className="absolute inset-4 bg-background rounded-full"></div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-background/50 rounded-full"></div>
+                </div>
+                {/* Greeting */}
+                <div className="space-y-3">
+                  <h1 className="text-4xl font-bold text-foreground">Welcome to ProcureFlow</h1>
+                  <p className="text-3xl font-medium">
+                    How Can I <span className="text-accent">Assist You Today</span>?
+                  </p>
+                </div>
               </div>
 
-              {/* Greeting */}
-              <div className="space-y-3">
-                <h1 className="text-4xl font-bold text-foreground">
-                  Welcome to ProcureFlow
-                </h1>
-                <p className="text-3xl font-medium">
-                  How Can I{" "}
-                  <span className="text-accent">Assist You Today</span>?
-                </p>
+              {/* Chat input (centered by container) */}
+              <div className="mt-8">
+                <PromptInput onSubmit={handleSubmit} accept="image/*" multiple>
+                  <PromptInputHeader>
+                    <PromptInputTools>
+                      <PromptInputAttachments>
+                        {(attachment) => <PromptInputAttachment data={attachment} />}
+                      </PromptInputAttachments>
+                    </PromptInputTools>
+                  </PromptInputHeader>
+                  <PromptInputTextarea
+                    placeholder="Search or register new products, add to cart and buy, or ask anything..."
+                    ref={textareaRef}
+                  />
+                  <PromptInputFooter>
+                    <PromptInputTools>
+                      <PromptInputActionMenu>
+                        <PromptInputActionMenuTrigger />
+                        <PromptInputActionMenuContent>
+                          <PromptInputActionAddAttachments />
+                        </PromptInputActionMenuContent>
+                      </PromptInputActionMenu>
+                      <PromptInputSpeechButton textareaRef={textareaRef} />
+                    </PromptInputTools>
+                    <PromptInputSubmit />
+                  </PromptInputFooter>
+                </PromptInput>
               </div>
 
-              {/* Quick Actions */}
-              <div className="grid grid-cols-2 gap-3 mt-12 max-w-lg mx-auto">
+              {/* Suggestion cards directly under the chat input */}
+              <div className="grid grid-cols-2 gap-3 mt-6">
                 <Button
                   variant="action"
                   className="h-auto py-4 px-5 flex-col items-start gap-2"
-                  onClick={() => textInput.setInput("Show me USB-C cables")}
+                  onClick={() => textInput.setInput("Show me ")}
                 >
                   <List className="w-5 h-5" />
                   <span className="text-sm font-medium">Search Catalog</span>
@@ -240,111 +366,9 @@ function ChatContent() {
                 </Button>
               </div>
             </div>
-          </ConversationEmptyState>
-        ) : (
-          <ConversationContent>
-            <div className="w-full px-4 md:px-6 space-y-6">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                >
-                  {message.role === "user" ? (
-                    <div className="max-w-2xl rounded-2xl px-4 py-3 bg-primary text-primary-foreground">
-                      <p>{message.content}</p>
-                    </div>
-                  ) : (
-                    <div className="w-full max-w-full space-y-3">
-                      <p className="text-foreground">{message.content}</p>
-                      {isProductsMessage(message) && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
-                          {message.data.map((product) => (
-                            <ProductCard
-                              key={product.id}
-                              product={product}
-                              onAddToCart={addToCart}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </ConversationContent>
-        )}
-        <ConversationScrollButton />
-      </Conversation>
-
-      {/* Input Area */}
-      <div className="p-4">
-          <div className="max-w-3xl mx-auto">
-            <PromptInput
-              onSubmit={handleSubmit}
-              accept="image/*"
-              multiple
-            >
-              <PromptInputHeader>
-                <PromptInputTools>
-                  <PromptInputAttachments>
-                    {(attachment) => (
-                      <PromptInputAttachment data={attachment} />
-                    )}
-                  </PromptInputAttachments>
-                </PromptInputTools>
-              </PromptInputHeader>
-              <PromptInputTextarea
-                placeholder="Search or register new products, add to cart and buy, or ask anything..."
-                ref={textareaRef}
-              />
-              <PromptInputFooter>
-                <PromptInputTools>
-                  <PromptInputActionMenu>
-                    <PromptInputActionMenuTrigger />
-                    <PromptInputActionMenuContent>
-                      <PromptInputActionAddAttachments />
-                    </PromptInputActionMenuContent>
-                  </PromptInputActionMenu>
-                  <PromptInputSpeechButton textareaRef={textareaRef} />
-                </PromptInputTools>
-                <PromptInputSubmit />
-              </PromptInputFooter>
-            </PromptInput>
-
-            {/* Action Buttons */}
-            <div className="flex items-center justify-center gap-2 flex-wrap mt-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-full h-8 text-xs"
-                onClick={() => setRegisterOpen(true)}
-              >
-                <Package className="w-3.5 h-3.5 mr-1.5" />
-                Register Item
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-full h-8 text-xs"
-                onClick={() => openCart()}
-              >
-                <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
-                Cart ({cart.length})
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-full h-8 text-xs"
-                onClick={() => setCheckoutOpen(true)}
-                disabled={cart.length === 0}
-              >
-                <CreditCard className="w-3.5 h-3.5 mr-1.5" />
-                Checkout
-              </Button>
-            </div>
           </div>
         </div>
+      )}
 
       {/* Modals */}
       <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
