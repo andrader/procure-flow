@@ -28,17 +28,33 @@ import {
   PromptInputActionMenuTrigger,
   PromptInputActionMenuContent,
   PromptInputActionAddAttachments,
+  type PromptInputMessage,
   usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
 import { useStickToBottomContext } from "use-stick-to-bottom";
 
-type Message = {
+// Chat message model with strong typing for assistant payloads
+type BaseMessage = {
   id: string;
-  role: "user" | "assistant";
   content: string;
-  type?: "text" | "products" | "register" | "cart" | "checkout";
-  data?: unknown;
 };
+
+type UserMessage = BaseMessage & {
+  role: "user";
+};
+
+type AssistantTextMessage = BaseMessage & {
+  role: "assistant";
+  type?: "text"; // default assistant text message
+};
+
+type AssistantProductsMessage = BaseMessage & {
+  role: "assistant";
+  type: "products";
+  data: Product[];
+};
+
+type Message = UserMessage | AssistantTextMessage | AssistantProductsMessage;
 
 type Product = {
   id: string;
@@ -78,13 +94,18 @@ function ChatContent() {
   const [registerOpen, setRegisterOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
+  // Type guard to narrow assistant product messages
+  const isProductsMessage = (
+    m: Message
+  ): m is AssistantProductsMessage => m.role === "assistant" && m.type === "products";
+
   const handleSubmit = async (
-    message: { text?: string; files?: File[] },
+    message: PromptInputMessage,
     e: React.FormEvent<HTMLFormElement>
   ) => {
     if (!message.text?.trim() && (!message.files || message.files.length === 0)) return;
 
-    const userMessage: Message = {
+    const userMessage: UserMessage = {
       id: Date.now().toString(),
       role: "user",
       content: message.text || "",
@@ -97,8 +118,8 @@ function ChatContent() {
       const res = await axios.get(`${API_BASE}/api/products`, {
         params: { q: message.text || "" },
       });
-      const data: Product[] = res.data?.data ?? [];
-      const aiMessage: Message = {
+      const data: Product[] = Array.isArray(res.data?.data) ? res.data.data : [];
+      const aiMessage: AssistantProductsMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: `I found ${data.length} items matching "${message.text || ""}"`,
@@ -224,9 +245,9 @@ function ChatContent() {
                   ) : (
                     <div className="w-full max-w-full space-y-3">
                       <p className="text-foreground">{message.content}</p>
-                      {message.type === "products" && message.data && (
+                      {isProductsMessage(message) && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
-                          {message.data.map((product: Product) => (
+                          {message.data.map((product) => (
                             <ProductCard
                               key={product.id}
                               product={product}
@@ -264,6 +285,7 @@ function ChatContent() {
               </PromptInputHeader>
               <PromptInputTextarea
                 placeholder="Ask me anything..."
+                ref={textareaRef}
               />
               <PromptInputFooter>
                 <PromptInputTools>
