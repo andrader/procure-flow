@@ -19,6 +19,8 @@ type CartContextValue = {
   open: () => void;
   close: () => void;
   toggle: () => void;
+  pinned: boolean;
+  togglePinned: () => void;
 };
 
 const CartContext = createContext<CartContextValue | undefined>(undefined);
@@ -26,9 +28,33 @@ const CartContext = createContext<CartContextValue | undefined>(undefined);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<Product[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [pinned, setPinned] = useState<boolean>(() => {
+    try {
+      const raw = localStorage.getItem("cart:pinned");
+      return raw ? JSON.parse(raw) === true : false;
+    } catch {
+      return false;
+    }
+  });
+
+  // Persist pinned state
+  const persistPinned = useCallback((value: boolean) => {
+    try {
+      localStorage.setItem("cart:pinned", JSON.stringify(value));
+    } catch {
+      // noop
+    }
+  }, []);
 
   const addToCart = useCallback((product: Product) => {
-    setCart((prev) => [...prev, product]);
+    setCart((prev) => {
+      const next = [...prev, product];
+      // Open the cart when the first item is added
+      if (prev.length === 0) {
+        setIsOpen(true);
+      }
+      return next;
+    });
   }, []);
 
   const removeFromCart = useCallback((productId: string) => {
@@ -38,12 +64,30 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const clearCart = useCallback(() => setCart([]), []);
 
   const open = useCallback(() => setIsOpen(true), []);
-  const close = useCallback(() => setIsOpen(false), []);
-  const toggle = useCallback(() => setIsOpen((v) => !v), []);
+  const close = useCallback(() => {
+    // Always allow explicit close; protections against accidental dismiss
+    // are handled at the component level (e.g., prevent outside clicks)
+    setIsOpen(false);
+  }, []);
+  const toggle = useCallback(() => {
+    setIsOpen((v) => (pinned ? true : !v));
+  }, [pinned]);
+
+  const togglePinned = useCallback(() => {
+    setPinned((prev) => {
+      const next = !prev;
+      persistPinned(next);
+      // If pinning on while closed, open it
+      if (next) {
+        setIsOpen(true);
+      }
+      return next;
+    });
+  }, [persistPinned]);
 
   const value = useMemo(
-    () => ({ cart, addToCart, removeFromCart, clearCart, isOpen, open, close, toggle }),
-    [cart, addToCart, removeFromCart, clearCart, isOpen, open, close, toggle]
+    () => ({ cart, addToCart, removeFromCart, clearCart, isOpen, open, close, toggle, pinned, togglePinned }),
+    [cart, addToCart, removeFromCart, clearCart, isOpen, open, close, toggle, pinned, togglePinned]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

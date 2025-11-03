@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { ArrowLeft, ShoppingCart } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useCart } from "@/contexts/CartContext";
 import axios from "axios";
 
 const API_BASE = (import.meta?.env?.VITE_API_BASE as string) ?? "http://localhost:4000";
@@ -22,6 +23,7 @@ type Product = {
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { addToCart } = useCart();
   const [addedToCart, setAddedToCart] = useState(false);
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,6 +85,10 @@ export default function ProductDetail() {
   }
 
   const handleAddToCart = () => {
+    if (product) {
+      addToCart(product);
+      // openCart will be triggered automatically on first add by context
+    }
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
   };

@@ -2,7 +2,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trash2, ShoppingCart } from "lucide-react";
+import { Trash2, ShoppingCart, Pin, PinOff } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 type Product = {
   id: string;
@@ -20,6 +21,9 @@ type CartSidebarProps = {
   cart: Product[];
   onRemoveFromCart: (productId: string) => void;
   onCheckout: () => void;
+  pinned?: boolean;
+  onTogglePinned?: () => void;
+  onEscClose?: () => void;
 };
 
 export function CartSidebar({ 
@@ -27,9 +31,35 @@ export function CartSidebar({
   onOpenChange, 
   cart, 
   onRemoveFromCart,
-  onCheckout 
+  onCheckout,
+  pinned = false,
+  onTogglePinned,
+  onEscClose,
 }: CartSidebarProps) {
   const cartTotal = cart.reduce((sum, p) => sum + p.price, 0);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+
+  // When pinned, displace page content to make room for the sidebar.
+  useEffect(() => {
+    if (!contentRef.current) return;
+    const el = contentRef.current;
+    const applyPadding = () => {
+      if (pinned && open) {
+        const width = el.offsetWidth || 400;
+        // Only displace on sm and up; on mobile keep overlay behavior
+        const isSmall = window.matchMedia("(max-width: 639px)").matches;
+        document.body.style.paddingRight = isSmall ? "0px" : `${width}px`;
+      } else {
+        document.body.style.paddingRight = "";
+      }
+    };
+    applyPadding();
+    window.addEventListener("resize", applyPadding);
+    return () => {
+      window.removeEventListener("resize", applyPadding);
+      document.body.style.paddingRight = "";
+    };
+  }, [pinned, open]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange} modal={false}>
@@ -37,12 +67,29 @@ export function CartSidebar({
         side="right"
         className="w-full sm:w-[400px] sm:max-w-[400px] flex flex-col"
         onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={() => {
+          onEscClose?.();
+        }}
+        ref={contentRef as any}
       >
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5" />
-            Shopping Cart ({cart.length})
-          </SheetTitle>
+        <SheetHeader className="pr-10">{/** reserve space for the close X */}
+          <div className="flex items-center gap-2">
+            {/** Keep pin near the title to avoid overlapping with the Close X in the top-right */}
+            <SheetTitle className="flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5" />
+              Shopping Cart ({cart.length})
+            </SheetTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-8 w-8 ${pinned ? 'text-primary' : ''}`}
+              aria-label={pinned ? 'Unpin cart' : 'Pin cart'}
+              title={pinned ? 'Unpin cart' : 'Pin cart'}
+              onClick={onTogglePinned}
+            >
+              {pinned ? <Pin className="w-4 h-4" /> : <PinOff className="w-4 h-4" />}
+            </Button>
+          </div>
         </SheetHeader>
 
         {cart.length === 0 ? (
