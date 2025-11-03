@@ -125,6 +125,8 @@ function ChatContent() {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    // Clear the input immediately after submitting so the user sees it reset right away
+    textInput.setInput("");
     setIsThinking(true);
 
     // Call backend to search products
