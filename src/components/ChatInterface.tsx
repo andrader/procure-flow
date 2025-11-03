@@ -22,29 +22,6 @@ import {
 import { SharedPromptInput } from "@/components/ai-elements/shared-prompt-input";
 import { useStickToBottomContext } from "use-stick-to-bottom";
 
-// Chat message model with strong typing for assistant payloads
-type BaseMessage = {
-  id: string;
-  content: string;
-};
-
-type UserMessage = BaseMessage & {
-  role: "user";
-};
-
-type AssistantTextMessage = BaseMessage & {
-  role: "assistant";
-  type?: "text"; // default assistant text message
-};
-
-type AssistantProductsMessage = BaseMessage & {
-  role: "assistant";
-  type: "products";
-  data: Product[];
-};
-
-type Message = UserMessage | AssistantTextMessage | AssistantProductsMessage;
-
 type Product = {
   id: string;
   name: string;
@@ -59,7 +36,7 @@ type Product = {
 const API_BASE = (import.meta?.env?.VITE_API_BASE as string) ?? "http://localhost:4000";
 
 // Helper component to access scroll context inside Conversation
-function AutoScroll({ messages }: { messages: Message[] }) {
+function AutoScroll({ messages }: { messages: UIMessage[] }) {
   const { scrollToBottom } = useStickToBottomContext();
 
   useEffect(() => {
@@ -78,39 +55,16 @@ function AutoScroll({ messages }: { messages: Message[] }) {
 function ChatContent() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { textInput } = usePromptInputController();
-  const [messages, setMessages] = useState<Message[]>([]);
   const { cart, open: openCart, totalCount } = useCart();
   const [registerOpen, setRegisterOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [isThinking, setIsThinking] = useState(false);
 
-  // AI chat hook: send user prompts to backend and append assistant reply to our message list
-  const { sendMessage, status } = useChat({
+  // AI chat hook with proper streaming configuration
+  const { messages, sendMessage, status, setMessages } = useChat({
     transport: new DefaultChatTransport({
       api: `${API_BASE}/api/chat`,
     }),
-    onFinish: ({ message }) => {
-      // Extract plain text from UIMessage parts
-      const text = message.parts
-        .map((part) => (part.type === "text" ? part.text : ""))
-        .join("")
-        .trim();
-      if (text) {
-        const aiMessage: AssistantTextMessage = {
-          id: (Date.now() + Math.random()).toString(),
-          role: "assistant",
-          content: text,
-          type: "text",
-        };
-        setMessages((prev) => [...prev, aiMessage]);
-      }
-    },
   });
-
-  // Type guard to narrow assistant product messages
-  const isProductsMessage = (
-    m: Message
-  ): m is AssistantProductsMessage => m.role === "assistant" && m.type === "products";
 
   const handleSubmit = async (
     message: PromptInputMessage,
@@ -118,89 +72,49 @@ function ChatContent() {
   ) => {
     if (!message.text?.trim() && (!message.files || message.files.length === 0)) return;
 
-    const userMessage: UserMessage = {
-      id: Date.now().toString(),
-      role: "user",
-      content: message.text || "",
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    // Clear the input immediately after submitting so the user sees it reset right away
+    // Send message to AI - useChat will handle adding it to messages automatically
+    sendMessage({ text: message.text ?? "", files: message.files });
+    
+    // Clear the input immediately after submitting
     textInput.setInput("");
-    setIsThinking(true);
 
-    // Call backend to search products
-    let foundCount = -1; // track results; -1 means unknown/error, 0 means none found
-    try {
-      const res = await axios.get(`${API_BASE}/api/products`, {
-        params: { q: message.text || "" },
-      });
-      const data: Product[] = Array.isArray(res.data?.data) ? res.data.data : [];
-      foundCount = data.length;
-      
-      // Only show product results if we found at least one item
-      if (data.length > 0) {
-        const aiMessage: AssistantProductsMessage = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: `I found ${data.length} items matching "${message.text || ""}"`,
-          type: "products",
-          data,
-        };
-        setMessages((prev) => [...prev, aiMessage]);
+    // Optionally search products in parallel for better UX
+    if (message.text?.trim()) {
+      try {
+        await axios.get(`${API_BASE}/api/products`, {
+          params: { q: message.text },
+        });
+        // Product results could be handled via tool calling or custom data parts
+        // For now, we let the AI assistant provide guidance
+      } catch (err) {
+        console.error("Product search error:", err);
       }
-    } catch (err) {
-      // Fallback message
-      // eslint-disable-next-line no-console
-      console.error("Search error:", err);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: "Sorry, I couldn't search the catalog right now.",
-        },
-      ]);
-    }
-
-    // Also send to AI chat for a natural-language response — but only if zero products found
-    try {
-      const hasInput = !!message.text?.trim() || (message.files && message.files.length > 0);
-      if (hasInput && foundCount === 0) {
-        await sendMessage({ text: message.text ?? "", files: message.files });
-      }
-    } catch (err) {
-      // Swallow errors; UI already shows product results or fallback
-      console.log("AI chat error:", err);
-    } finally {
-      setIsThinking(false);
     }
   };
 
   const onRegistered = (product?: Product) => {
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: product
-          ? `Item "${product.name}" has been registered successfully and is pending approval.`
-          : "Item registered.",
-      },
-    ]);
+    // Instead of manually adding a message, we could send a message to the AI
+    // For now, keep the UX simple with a notification
     setRegisterOpen(false);
+    // Optionally notify the AI about the registration
+    if (product) {
+      sendMessage({ 
+        text: `I just registered a new item: ${product.name}. Can you confirm?` 
+      });
+    }
   };
 
   // Listen for global "new-chat" event from Header to reset the conversation
   useEffect(() => {
     const handler = () => {
+      // Clear all messages to start a new chat
       setMessages([]);
       // Clear input if present
       textInput.setInput("");
     };
     window.addEventListener("new-chat", handler);
     return () => window.removeEventListener("new-chat", handler);
-  }, [textInput]);
+  }, [setMessages, textInput]);
 
   const hasMessages = messages.length > 0;
 
@@ -220,25 +134,56 @@ function ChatContent() {
                   >
                     {message.role === "user" ? (
                       <div className="max-w-2xl rounded-2xl px-4 py-3 bg-primary text-primary-foreground">
-                        <p>{message.content}</p>
+                        {message.parts.map((part, i) => {
+                          switch (part.type) {
+                            case "text":
+                              return <p key={i}>{part.text}</p>;
+                            case "file":
+                              return (
+                                <img 
+                                  key={i} 
+                                  src={part.url} 
+                                  alt={part.filename ?? "uploaded image"}
+                                  className="max-w-xs rounded-lg mt-2"
+                                />
+                              );
+                            default:
+                              return null;
+                          }
+                        })}
                       </div>
                     ) : (
                       <div className="w-full max-w-full space-y-3">
                         <div className="max-w-2xl rounded-2xl px-4 py-3 bg-muted text-foreground">
-                          <p>{message.content}</p>
+                          {message.parts.map((part, i) => {
+                            switch (part.type) {
+                              case "text":
+                                return <p key={i}>{part.text}</p>;
+                              case "reasoning":
+                                return (
+                                  <pre key={i} className="text-xs opacity-70 whitespace-pre-wrap">
+                                    {part.text}
+                                  </pre>
+                                );
+                              case "file":
+                                return (
+                                  <img 
+                                    key={i} 
+                                    src={part.url} 
+                                    alt={part.filename ?? "generated image"}
+                                    className="max-w-xs rounded-lg mt-2"
+                                  />
+                                );
+                              default:
+                                return null;
+                            }
+                          })}
                         </div>
-                        {isProductsMessage(message) && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
-                            {message.data.map((product) => (
-                              <ProductCard key={product.id} product={product} />
-                            ))}
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
                 ))}
-                {isThinking && (
+                {(status === "streaming" || status === "submitted") && (
                   <div className="flex justify-start">
                     <div className="max-w-2xl rounded-2xl px-4 py-3 bg-muted">
                       <div className="flex items-center gap-2">

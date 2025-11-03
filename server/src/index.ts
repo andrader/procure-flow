@@ -152,8 +152,39 @@ app.post("/api/chat", async (req: Request, res: Response) => {
       messages: convertToModelMessages(messages),
     });
 
-    // Stream as UI messages directly to the Express response
-    result.pipeUIMessageStreamToResponse(res);
+    // Convert to Response object and pipe to Express response
+    const response = result.toUIMessageStreamResponse();
+    
+    // Copy headers from the Response to Express response
+    response.headers.forEach((value, key) => {
+      res.setHeader(key, value);
+    });
+    
+    // Set status and pipe the body
+    res.status(response.status);
+    
+    // Stream the response body
+    if (response.body) {
+      const reader = response.body.getReader();
+      const pump = async () => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            res.write(value);
+          }
+          res.end();
+        } catch (error) {
+          console.error("Stream error:", error);
+          if (!res.headersSent) {
+            res.status(500).end();
+          }
+        }
+      };
+      pump();
+    } else {
+      res.end();
+    }
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error("/api/chat error:", err);
