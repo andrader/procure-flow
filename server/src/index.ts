@@ -184,6 +184,39 @@ async function searchProductsTool({ query }: { query: string }) {
   };
 }
 
+// Tool function: Add product to cart (returns data for client to update cart)
+async function addToCartTool({
+  productId,
+  quantity = 1,
+}: {
+  productId: string;
+  quantity?: number;
+}) {
+  console.log(`[Tool] addToCart productId=${productId} quantity=${quantity}`);
+  const product = products.find((p) => p.id === productId);
+  if (!product) {
+    return {
+      success: false as const,
+      message: `Product not found: ${productId}`,
+    };
+  }
+  const q = Math.max(1, Math.min(999, Math.floor(Number(quantity) || 1)));
+  return {
+    success: true as const,
+    message: `Added ${q} × ${product.name} to cart`,
+    quantity: q,
+    product: {
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      description: product.description,
+      price: product.price,
+      status: product.status,
+      images: product.images || [],
+    },
+  };
+}
+
 // AI chat endpoint - streams UI messages compatible with @ai-sdk/react useChat
 app.post("/api/chat", async (req: Request, res: Response) => {
   console.log("Received /api/chat request");
@@ -197,11 +230,12 @@ app.post("/api/chat", async (req: Request, res: Response) => {
 
     const result = streamText({
       model: openai("gpt-5-nano"),
-      system: `You are ProcureFlow's helpful assistant. You help users find products in the procurement catalog.
-      
+      system: `You are ProcureFlow's helpful assistant. You help users find and purchase products in the procurement catalog.
+
 When users ask about products:
-1. Use the searchProducts tool to search the catalog. No need to return/describe/list the items found.
-2. You may suggest, very concisely, next actions like adding items to cart or registering new items.
+1. Use the searchProducts tool to search the catalog. Do not list items yourself — let the UI render results.
+2. When the user asks to add an item (optionally with a quantity), call the addToCart tool with the most relevant productId and quantity (default 1). Prefer product IDs from the latest search results if available.
+3. Be concise. You may briefly confirm actions and suggest next steps like viewing the cart or checking out.
 `,
       messages: convertToModelMessages(messages),
       // Enable multi-step tool calling
@@ -213,6 +247,20 @@ When users ask about products:
             query: z.string().describe('The search query to find products'),
           }),
           execute: searchProductsTool,
+        }),
+        addToCart: tool({
+          description: 'Add a product to the user\'s shopping cart with an optional quantity.',
+          inputSchema: z.object({
+            productId: z.string().describe('The catalog product id to add'),
+            quantity: z
+              .number()
+              .int()
+              .min(1)
+              .max(999)
+              .default(1)
+              .describe('Quantity to add (defaults to 1)'),
+          }),
+          execute: addToCartTool,
         }),
       },
     });

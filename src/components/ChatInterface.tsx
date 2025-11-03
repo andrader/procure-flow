@@ -54,9 +54,10 @@ function AutoScroll({ messages }: { messages: UIMessage[] }) {
 function ChatContent() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { textInput } = usePromptInputController();
-  const { cart, open: openCart, totalCount } = useCart();
+  const { cart, open: openCart, totalCount, addToCart } = useCart();
   const [registerOpen, setRegisterOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const processedToolCalls = useRef<Set<string>>(new Set());
 
   // AI chat hook with proper streaming configuration
   const { messages, sendMessage, status, setMessages } = useChat({
@@ -203,6 +204,58 @@ function ChatContent() {
                                     return (
                                       <div key={callId} className="text-sm text-destructive">
                                         Error searching products: {part.errorText}
+                                      </div>
+                                    );
+                                }
+                                break;
+                              }
+                              // Handle addToCart tool calls
+                              case "tool-addToCart": {
+                                const callId = part.toolCallId;
+                                switch (part.state) {
+                                  case "input-streaming":
+                                    return (
+                                      <div key={callId} className="text-sm text-muted-foreground italic">
+                                        Adding item to cart...
+                                      </div>
+                                    );
+                                  case "input-available": {
+                                    const input = part.input as { productId: string; quantity?: number };
+                                    return (
+                                      <div key={callId} className="text-sm text-muted-foreground italic">
+                                        Adding to cart: {input.quantity ?? 1} × {input.productId}
+                                      </div>
+                                    );
+                                  }
+                                  case "output-available": {
+                                    const output = part.output as
+                                      | { success: true; message: string; quantity: number; product: Product }
+                                      | { success: false; message: string };
+
+                                    // Side-effect: add to cart once (avoid duplicates in StrictMode)
+                                    if (
+                                      output &&
+                                      (output as any).success === true &&
+                                      !processedToolCalls.current.has(callId)
+                                    ) {
+                                      try {
+                                        const ok = output as { success: true; quantity: number; product: Product };
+                                        addToCart(ok.product, ok.quantity);
+                                      } finally {
+                                        processedToolCalls.current.add(callId);
+                                      }
+                                    }
+
+                                    return (
+                                      <div key={callId} className="text-sm">
+                                        {output.message}
+                                      </div>
+                                    );
+                                  }
+                                  case "output-error":
+                                    return (
+                                      <div key={callId} className="text-sm text-destructive">
+                                        Failed to add to cart: {part.errorText}
                                       </div>
                                     );
                                 }
