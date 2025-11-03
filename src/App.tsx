@@ -11,6 +11,7 @@ import { CartProvider, useCart } from "@/contexts/CartContext";
 import { CartSidebar } from "@/components/CartSidebar";
 import ProductDetail from "./pages/ProductDetail";
 import NotFound from "./pages/NotFound";
+import SearchPage from "./pages/Search";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/search" element={<SearchPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/product/:id" element={<ProductDetail />} />
