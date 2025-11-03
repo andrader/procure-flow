@@ -82,6 +82,7 @@ function ChatContent() {
   const { cart, addToCart, open: openCart } = useCart();
   const [registerOpen, setRegisterOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
 
   // AI chat hook: send user prompts to backend and append assistant reply to our message list
   const { sendMessage, status } = useChat({
@@ -124,6 +125,7 @@ function ChatContent() {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    setIsThinking(true);
 
     // Call backend to search products
     let foundCount = -1; // track results; -1 means unknown/error, 0 means none found
@@ -133,14 +135,18 @@ function ChatContent() {
       });
       const data: Product[] = Array.isArray(res.data?.data) ? res.data.data : [];
       foundCount = data.length;
-      const aiMessage: AssistantProductsMessage = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: `I found ${data.length} items matching "${message.text || ""}"`,
-        type: "products",
-        data,
-      };
-      setMessages((prev) => [...prev, aiMessage]);
+      
+      // Only show product results if we found at least one item
+      if (data.length > 0) {
+        const aiMessage: AssistantProductsMessage = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: `I found ${data.length} items matching "${message.text || ""}"`,
+          type: "products",
+          data,
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+      }
     } catch (err) {
       // Fallback message
       // eslint-disable-next-line no-console
@@ -164,6 +170,8 @@ function ChatContent() {
     } catch (err) {
       // Swallow errors; UI already shows product results or fallback
       console.log("AI chat error:", err);
+    } finally {
+      setIsThinking(false);
     }
   };
 
@@ -230,6 +238,20 @@ function ChatContent() {
                     )}
                   </div>
                 ))}
+                {isThinking && (
+                  <div className="flex justify-start">
+                    <div className="max-w-2xl rounded-2xl px-4 py-3 bg-muted">
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1">
+                          <span className="w-2 h-2 bg-foreground/60 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                          <span className="w-2 h-2 bg-foreground/60 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                          <span className="w-2 h-2 bg-foreground/60 rounded-full animate-bounce"></span>
+                        </div>
+                        <span className="text-sm text-muted-foreground">Thinking...</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </ConversationContent>
             <ConversationScrollButton />
