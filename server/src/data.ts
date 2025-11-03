@@ -1,5 +1,28 @@
 // Mocked data served by the Express backend
-export const products = [
+
+export interface Product {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  price: number;
+  status: string;
+  images: string[];
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  snippet: string;
+  updatedAt: string;
+}
+
+export interface Conversations {
+  recent: Conversation[];
+  older: Conversation[];
+}
+
+export const products: Product[] = [
   {
     id: "1",
     name: "White keyboard with cable",
@@ -80,7 +103,7 @@ export const products = [
   },
 ];
 
-export const conversations = {
+export const conversations: Conversations = {
   recent: [
     {
       id: "c1",
@@ -93,14 +116,14 @@ export const conversations = {
 };
 
 // helper to add a product
-export function addProduct(payload) {
+export function addProduct(payload: Partial<Product>): Product {
   const id = Date.now().toString();
-  const product = {
+  const product: Product = {
     id,
     name: payload.name || "Unnamed Product",
     category: payload.category || "Uncategorized",
     description: payload.description || "",
-    price: typeof payload.price === "number" ? payload.price : parseFloat(payload.price || 0) || 0,
+    price: typeof payload.price === "number" ? payload.price : parseFloat(String(payload.price || 0)) || 0,
     status: payload.status || "Pending Approval",
     images: payload.images || [],
   };

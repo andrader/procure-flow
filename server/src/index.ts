@@ -1,27 +1,23 @@
-import express from "express";
-import { products, conversations, addProduct } from "./data.js";
+import express, { type Request, type Response, type NextFunction } from "express";
+import { products, conversations, addProduct, type Product } from "./data.js";
 import { convertToModelMessages, streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 
 import path from "path";
 import { fileURLToPath } from "url";
 
-
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-
-
 // Basic JSON and CORS middleware (no external deps required)
 app.use(express.json());
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   const origin = req.headers.origin || "*";
   res.setHeader("Access-Control-Allow-Origin", origin);
   // Allow common methods
@@ -60,22 +56,21 @@ app.use((req, res, next) => {
 });
 
 // Serve static files from the dist/ directory
-app.use(express.static(path.join(__dirname, "../dist")));
-
+app.use(express.static(path.join(__dirname, "../../dist")));
 
 // Health
-app.get("/api/health", (req, res) => {
+app.get("/api/health", (req: Request, res: Response) => {
   console.log("Received /api/health request");
   res.json({ status: "ok", now: new Date().toISOString() });
 });
 
 // Products list
-app.get("/api/products", (req, res) => {
+app.get("/api/products", (req: Request, res: Response) => {
   const qRaw = (req.query.q || "").toString();
   const q = qRaw.trim();
   if (q) {
     // Normalize a string: lowercase, replace non-alphanum with spaces, collapse spaces
-    const normalize = (s) =>
+    const normalize = (s: string | undefined): string =>
       String(s || "")
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, " ")
@@ -90,7 +85,7 @@ app.get("/api/products", (req, res) => {
       .map((t) => t.trim())
       .filter((t) => t && !STOPWORDS.has(t));
 
-    const filtered = products.filter((p) => {
+    const filtered = products.filter((p: Product) => {
       const hay = normalize([p.name, p.description, p.category].filter(Boolean).join(" "));
       // every token must appear in the haystack (allow simple plural match)
       return tokens.every((tok) => {
@@ -109,7 +104,7 @@ app.get("/api/products", (req, res) => {
 });
 
 // Product detail
-app.get("/api/products/:id", (req, res) => {
+app.get("/api/products/:id", (req: Request, res: Response) => {
   const id = req.params.id;
   const p = products.find((x) => x.id === id);
   if (!p) return res.status(404).json({ error: "Not found" });
@@ -117,30 +112,30 @@ app.get("/api/products/:id", (req, res) => {
 });
 
 // Conversations
-app.get("/api/conversations", (req, res) => {
+app.get("/api/conversations", (req: Request, res: Response) => {
   res.json(conversations);
 });
 
 // Register new product (mock)
-app.post("/api/register", (req, res) => {
+app.post("/api/register", (req: Request, res: Response) => {
   const payload = req.body || {};
   try {
     const product = addProduct(payload);
     res.status(201).json({ success: true, product });
   } catch (err) {
-    res.status(400).json({ success: false, error: (err && err.message) || "invalid" });
+    res.status(400).json({ success: false, error: (err && (err as Error).message) || "invalid" });
   }
 });
 
 // Checkout simulation
-app.post("/api/checkout", (req, res) => {
+app.post("/api/checkout", (req: Request, res: Response) => {
   const { cart } = req.body || {};
   const total = Array.isArray(cart) ? cart.reduce((s, it) => s + (Number(it.price) || 0), 0) : 0;
   res.json({ success: true, message: `Order confirmed for ${Array.isArray(cart) ? cart.length : 0} items.`, total });
 });
 
 // AI chat endpoint - streams UI messages compatible with @ai-sdk/react useChat
-app.post("/api/chat", async (req, res) => {
+app.post("/api/chat", async (req: Request, res: Response) => {
   console.log("Received /api/chat request");
   try {
     const { messages = [] } = req.body || {};
@@ -168,11 +163,9 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-
-
 // For SPA routing (fallback for non-API routes)
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "../dist", "index.html"));
+app.get("/", (req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, "../../dist", "index.html"));
 });
 
 app.listen(PORT, () => {
