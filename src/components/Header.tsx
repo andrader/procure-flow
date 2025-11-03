@@ -3,7 +3,7 @@ import { Bell, Moon, Sun, Settings, SquarePen, ShoppingCart } from "lucide-react
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCart } from "@/contexts/CartContext";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export function Header() {
   const cart = useCart();
@@ -15,6 +15,7 @@ export function Header() {
       ? (cart as any).items.reduce((acc: number, item: any) => acc + (item?.quantity ?? 1), 0)
       : 0;
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchText, setSearchText] = useState("");
   const [isLight, setIsLight] = useState<boolean>(() => {
     try {
@@ -24,6 +25,8 @@ export function Header() {
       return false;
     }
   });
+
+  const isHomePage = location.pathname === "/";
 
   useEffect(() => {
     try {
@@ -72,6 +75,20 @@ export function Header() {
           />
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
         </div>
+        
+        {/* Home gradient circle - only show when not on home page */}
+        {!isHomePage && (
+          <button
+            onClick={() => navigate("/")}
+            className="relative w-6 h-6 flex-shrink-0 cursor-pointer group"
+            aria-label="Go to home"
+            title="Go to home"
+          >
+            <div className="absolute inset-0 gradient-orb rounded-full shadow-glow group-hover:animate-pulse"></div>
+            <div className="absolute inset-[3px] bg-background rounded-full"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-background/50 rounded-full"></div>
+          </button>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
