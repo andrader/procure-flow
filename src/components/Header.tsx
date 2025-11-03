@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Bell, Moon, Settings, MessageSquarePlus, ShoppingCart } from "lucide-react";
+import { Bell, Moon, Settings, SquarePen, ShoppingCart } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCart } from "@/contexts/CartContext";
 import { useMemo } from "react";
@@ -23,7 +23,7 @@ export function Header() {
           title="New chat"
           onClick={handleNewChat}
         >
-          <MessageSquarePlus className="w-4 h-4" />
+          <SquarePen className="w-4 h-4" />
         </Button>
         <div className="relative">
           <Input
