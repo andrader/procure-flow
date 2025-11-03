@@ -1,13 +1,12 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { ShoppingCart, Package, CreditCard, List, Upload, X } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ShoppingCart, Package, CreditCard, List } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
-import { CartSidebar } from "@/components/CartSidebar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { RegisterItemForm } from "@/components/RegisterItemForm";
+import { CheckoutPanel } from "@/components/CheckoutPanel";
+import { useCart } from "@/contexts/CartContext";
 import {
   Conversation,
   ConversationContent,
@@ -31,13 +30,14 @@ import {
   PromptInputActionAddAttachments,
   usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
+import { useStickToBottomContext } from "use-stick-to-bottom";
 
 type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
   type?: "text" | "products" | "register" | "cart" | "checkout";
-  data?: any;
+  data?: unknown;
 };
 
 type Product = {
@@ -53,22 +53,35 @@ type Product = {
 // Base URL for the mock API server
 const API_BASE = (import.meta?.env?.VITE_API_BASE as string) ?? "http://localhost:4000";
 
+// Helper component to access scroll context inside Conversation
+function AutoScroll({ messages }: { messages: Message[] }) {
+  const { scrollToBottom } = useStickToBottomContext();
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      // Use a small delay to ensure DOM has updated and images start loading
+      const timer = setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [messages, scrollToBottom]);
+
+  return null;
+}
+
 function ChatContent() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { textInput } = usePromptInputController();
   const [messages, setMessages] = useState<Message[]>([]);
-  const [cart, setCart] = useState<Product[]>([]);
-  const [showView, setShowView] = useState<"chat" | "register" | "checkout">("chat");
-  const [cartOpen, setCartOpen] = useState(false);
-  const [registerForm, setRegisterForm] = useState({
-    name: "",
-    category: "",
-    description: "",
-    price: "",
-  });
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const { cart, addToCart, open: openCart } = useCart();
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
 
-  const handleSubmit = async (message: { text?: string; files?: any[] }, e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (
+    message: { text?: string; files?: File[] },
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     if (!message.text?.trim() && (!message.files || message.files.length === 0)) return;
 
     const userMessage: Message = {
@@ -108,114 +121,26 @@ function ChatContent() {
     }
   };
 
-  const addToCart = (product: Product) => {
-    setCart((prev) => [...prev, product]);
-  };
-
-  const removeFromCart = (productId: string) => {
-    setCart((prev) => prev.filter((p) => p.id !== productId));
-  };
-
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const payload = {
-      name: registerForm.name,
-      category: registerForm.category,
-      description: registerForm.description,
-      price: parseFloat(registerForm.price || "0"),
-      images: uploadedImages,
-    };
-
-    try {
-      const res = await axios.post(`${API_BASE}/api/register`, payload);
-      const product: Product | undefined = res.data?.product;
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          role: "assistant",
-          content: product
-            ? `Item "${product.name}" has been registered successfully and is pending approval.`
-            : "Item registered.",
-        },
-      ]);
-
-      setRegisterForm({ name: "", category: "", description: "", price: "" });
-      setUploadedImages([]);
-      setShowView("chat");
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("Register error:", err);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          role: "assistant",
-          content: "Failed to register item. Please try again.",
-        },
-      ]);
-    }
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      Array.from(files).forEach((file) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setUploadedImages((prev) => [...prev, reader.result as string]);
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-  };
-
-  const removeImage = (index: number) => {
-    setUploadedImages((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleCheckout = async () => {
-    try {
-      const res = await axios.post(`${API_BASE}/api/checkout`, { cart });
-      const message = res.data?.message || `Order confirmed for ${cart.length} items.`;
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          role: "assistant",
-          content: message,
-        },
-      ]);
-      setCart([]);
-      setShowView("chat");
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("Checkout error:", err);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          role: "assistant",
-          content: "Checkout failed. Please try again.",
-        },
-      ]);
-    }
+  const onRegistered = (product?: Product) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: product
+          ? `Item "${product.name}" has been registered successfully and is pending approval.`
+          : "Item registered.",
+      },
+    ]);
+    setRegisterOpen(false);
   };
 
   return (
     <div className="flex flex-col h-screen">
-      {/* Cart Sidebar */}
-      <CartSidebar
-        open={cartOpen}
-        onOpenChange={setCartOpen}
-        cart={cart}
-        onRemoveFromCart={removeFromCart}
-        onCheckout={handleCheckout}
-      />
       {/* Messages Area */}
       <Conversation>
-        {messages.length === 0 && showView === "chat" ? (
+        <AutoScroll messages={messages} />
+        {messages.length === 0 ? (
           <ConversationEmptyState
             title="Welcome to ProcureFlow"
             description="How Can I Assist You Today?"
@@ -254,7 +179,7 @@ function ChatContent() {
                 <Button
                   variant="action"
                   className="h-auto py-4 px-5 flex-col items-start gap-2"
-                  onClick={() => setShowView("register")}
+                  onClick={() => setRegisterOpen(true)}
                 >
                   <Package className="w-5 h-5" />
                   <span className="text-sm font-medium">Register Item</span>
@@ -263,7 +188,7 @@ function ChatContent() {
                 <Button
                   variant="action"
                   className="h-auto py-4 px-5 flex-col items-start gap-2"
-                  onClick={() => setCartOpen(true)}
+                  onClick={() => openCart()}
                 >
                   <ShoppingCart className="w-5 h-5" />
                   <span className="text-sm font-medium">View Cart</span>
@@ -274,7 +199,7 @@ function ChatContent() {
                 <Button
                   variant="action"
                   className="h-auto py-4 px-5 flex-col items-start gap-2"
-                  onClick={() => setShowView("checkout")}
+                  onClick={() => setCheckoutOpen(true)}
                   disabled={cart.length === 0}
                 >
                   <CreditCard className="w-5 h-5" />
@@ -284,147 +209,6 @@ function ChatContent() {
               </div>
             </div>
           </ConversationEmptyState>
-        ) : showView === "register" ? (
-          <ConversationContent>
-            <div className="max-w-2xl mx-auto">
-              <div className="mb-6">
-                <Button variant="ghost" onClick={() => setShowView("chat")}>
-                  ← Back to Chat
-                </Button>
-              </div>
-              <Card>
-                <CardContent className="pt-6">
-                  <h2 className="text-2xl font-bold mb-6">Register New Item</h2>
-                  <form onSubmit={handleRegisterSubmit} className="space-y-4">
-                    <div>
-                      <Label htmlFor="name">Item Name</Label>
-                      <Input
-                        id="name"
-                        value={registerForm.name}
-                        onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })}
-                        placeholder="e.g., USB-C Cable 2m"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="category">Category</Label>
-                      <Input
-                        id="category"
-                        value={registerForm.category}
-                        onChange={(e) => setRegisterForm({ ...registerForm, category: e.target.value })}
-                        placeholder="e.g., Electronics"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        value={registerForm.description}
-                        onChange={(e) => setRegisterForm({ ...registerForm, description: e.target.value })}
-                        placeholder="Brief description of the item"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="price">Price (USD)</Label>
-                      <Input
-                        id="price"
-                        type="number"
-                        step="0.01"
-                        value={registerForm.price}
-                        onChange={(e) => setRegisterForm({ ...registerForm, price: e.target.value })}
-                        placeholder="0.00"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="images">Product Images</Label>
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <Input
-                            id="images"
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            onChange={handleImageUpload}
-                            className="hidden"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => document.getElementById("images")?.click()}
-                            className="w-full"
-                          >
-                            <Upload className="w-4 h-4 mr-2" />
-                            Upload Images
-                          </Button>
-                        </div>
-                        {uploadedImages.length > 0 && (
-                          <div className="grid grid-cols-3 gap-2">
-                            {uploadedImages.map((img, index) => (
-                              <div key={index} className="relative group">
-                                <img
-                                  src={img}
-                                  alt={`Upload ${index + 1}`}
-                                  className="w-full aspect-square object-cover rounded-lg"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="destructive"
-                                  size="icon"
-                                  className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => removeImage(index)}
-                                >
-                                  <X className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <Button type="submit" className="w-full">
-                      Register Item
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
-          </ConversationContent>
-        ) : showView === "checkout" ? (
-          <ConversationContent>
-            <div className="max-w-2xl mx-auto px-4">
-              <div className="mb-6">
-                <Button variant="ghost" onClick={() => setShowView("chat")}>
-                  ← Back to Chat
-                </Button>
-              </div>
-              <Card>
-                <CardContent className="pt-6">
-                  <h2 className="text-2xl font-bold mb-6">Checkout</h2>
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="font-semibold mb-4">Order Summary</h3>
-                      {cart.map((item, index) => (
-                        <div key={`${item.id}-${index}`} className="flex justify-between py-2">
-                          <span>{item.name}</span>
-                          <span>${item.price.toFixed(2)}</span>
-                        </div>
-                      ))}
-                      <div className="border-t mt-4 pt-4 flex justify-between font-bold text-lg">
-                        <span>Total:</span>
-                        <span>${cart.reduce((sum, p) => sum + p.price, 0).toFixed(2)}</span>
-                      </div>
-                    </div>
-                    <Button className="w-full" onClick={handleCheckout}>
-                      Confirm Order
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </ConversationContent>
         ) : (
           <ConversationContent>
             <div className="w-full px-4 md:px-6 space-y-6">
@@ -462,8 +246,7 @@ function ChatContent() {
       </Conversation>
 
       {/* Input Area */}
-      {showView === "chat" && (
-        <div className="border-t border-border bg-card/50 backdrop-blur-sm p-4">
+      <div className="border-t border-border bg-card/50 backdrop-blur-sm p-4">
           <div className="max-w-3xl mx-auto">
             <PromptInput
               onSubmit={handleSubmit}
@@ -502,7 +285,7 @@ function ChatContent() {
                 variant="outline"
                 size="sm"
                 className="rounded-full h-8 text-xs"
-                onClick={() => setShowView("register")}
+                onClick={() => setRegisterOpen(true)}
               >
                 <Package className="w-3.5 h-3.5 mr-1.5" />
                 Register Item
@@ -511,7 +294,7 @@ function ChatContent() {
                 variant="outline"
                 size="sm"
                 className="rounded-full h-8 text-xs"
-                onClick={() => setCartOpen(true)}
+                onClick={() => openCart()}
               >
                 <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
                 Cart ({cart.length})
@@ -520,7 +303,7 @@ function ChatContent() {
                 variant="outline"
                 size="sm"
                 className="rounded-full h-8 text-xs"
-                onClick={() => setShowView("checkout")}
+                onClick={() => setCheckoutOpen(true)}
                 disabled={cart.length === 0}
               >
                 <CreditCard className="w-3.5 h-3.5 mr-1.5" />
@@ -529,7 +312,24 @@ function ChatContent() {
             </div>
           </div>
         </div>
-      )}
+
+      {/* Modals */}
+      <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Register New Item</DialogTitle>
+          </DialogHeader>
+          <RegisterItemForm onSuccess={onRegistered} showTitle={false} />
+        </DialogContent>
+      </Dialog>
+      <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Checkout</DialogTitle>
+          </DialogHeader>
+          <CheckoutPanel onSuccess={() => setCheckoutOpen(false)} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
