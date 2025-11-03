@@ -13,23 +13,11 @@ import {
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import {
-  PromptInput,
   PromptInputProvider,
-  PromptInputHeader,
-  PromptInputTextarea,
-  PromptInputFooter,
-  PromptInputSubmit,
-  PromptInputTools,
-  PromptInputSpeechButton,
-  PromptInputAttachments,
-  PromptInputAttachment,
-  PromptInputActionMenu,
-  PromptInputActionMenuTrigger,
-  PromptInputActionMenuContent,
-  PromptInputActionAddAttachments,
   type PromptInputMessage,
   usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
+import { SharedPromptInput } from "@/components/ai-elements/shared-prompt-input";
 import { useStickToBottomContext } from "use-stick-to-bottom";
 
 // Chat message model with strong typing for assistant payloads
@@ -212,31 +200,12 @@ function ChatContent() {
           {/* Input at bottom when there are messages */}
           <div className="p-4">
             <div className="max-w-3xl mx-auto">
-              <PromptInput onSubmit={handleSubmit} accept="image/*" multiple>
-                <PromptInputHeader>
-                  <PromptInputTools>
-                    <PromptInputAttachments>
-                      {(attachment) => <PromptInputAttachment data={attachment} />}
-                    </PromptInputAttachments>
-                  </PromptInputTools>
-                </PromptInputHeader>
-                <PromptInputTextarea
-                  placeholder="Search or register new products, add to cart and buy, or ask anything..."
-                  ref={textareaRef}
-                />
-                <PromptInputFooter>
-                  <PromptInputTools>
-                    <PromptInputActionMenu>
-                      <PromptInputActionMenuTrigger />
-                      <PromptInputActionMenuContent>
-                        <PromptInputActionAddAttachments />
-                      </PromptInputActionMenuContent>
-                    </PromptInputActionMenu>
-                    <PromptInputSpeechButton textareaRef={textareaRef} />
-                  </PromptInputTools>
-                  <PromptInputSubmit />
-                </PromptInputFooter>
-              </PromptInput>
+              <SharedPromptInput
+                onSubmit={handleSubmit}
+                textareaRef={textareaRef}
+                accept="image/*"
+                multiple
+              />
 
               {/* Action Buttons */}
               <div className="flex items-center justify-center gap-2 flex-wrap mt-3">
@@ -296,31 +265,12 @@ function ChatContent() {
 
               {/* Chat input (centered by container) */}
               <div className="mt-8">
-                <PromptInput onSubmit={handleSubmit} accept="image/*" multiple>
-                  <PromptInputHeader>
-                    <PromptInputTools>
-                      <PromptInputAttachments>
-                        {(attachment) => <PromptInputAttachment data={attachment} />}
-                      </PromptInputAttachments>
-                    </PromptInputTools>
-                  </PromptInputHeader>
-                  <PromptInputTextarea
-                    placeholder="Search or register new products, add to cart and buy, or ask anything..."
-                    ref={textareaRef}
-                  />
-                  <PromptInputFooter>
-                    <PromptInputTools>
-                      <PromptInputActionMenu>
-                        <PromptInputActionMenuTrigger />
-                        <PromptInputActionMenuContent>
-                          <PromptInputActionAddAttachments />
-                        </PromptInputActionMenuContent>
-                      </PromptInputActionMenu>
-                      <PromptInputSpeechButton textareaRef={textareaRef} />
-                    </PromptInputTools>
-                    <PromptInputSubmit />
-                  </PromptInputFooter>
-                </PromptInput>
+                <SharedPromptInput
+                  onSubmit={handleSubmit}
+                  textareaRef={textareaRef}
+                  accept="image/*"
+                  multiple
+                />
               </div>
 
               {/* Suggestion cards directly under the chat input */}
