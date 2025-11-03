@@ -63,6 +63,7 @@ import {
   type ReactNode,
   type RefObject,
   useCallback,
+  forwardRef,
   useContext,
   useEffect,
   useMemo,
@@ -892,26 +893,23 @@ export const PromptInputTools = ({
 );
 
 export type PromptInputButtonProps = ComponentProps<typeof InputGroupButton>;
+export const PromptInputButton = forwardRef<HTMLButtonElement, PromptInputButtonProps>(
+  ({ variant = "ghost", className, size, ...props }, ref) => {
+    const newSize = size ?? (Children.count(props.children) > 1 ? "sm" : "icon-sm");
 
-export const PromptInputButton = ({
-  variant = "ghost",
-  className,
-  size,
-  ...props
-}: PromptInputButtonProps) => {
-  const newSize =
-    size ?? (Children.count(props.children) > 1 ? "sm" : "icon-sm");
-
-  return (
-    <InputGroupButton
-      className={cn(className)}
-      size={newSize}
-      type="button"
-      variant={variant}
-      {...props}
-    />
-  );
-};
+    return (
+      <InputGroupButton
+        ref={ref}
+        className={cn(className)}
+        size={newSize}
+        type="button"
+        variant={variant}
+        {...props}
+      />
+    );
+  }
+);
+PromptInputButton.displayName = "PromptInputButton";
 
 export type PromptInputActionMenuProps = ComponentProps<typeof DropdownMenu>;
 export const PromptInputActionMenu = (props: PromptInputActionMenuProps) => (
