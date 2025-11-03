@@ -16,7 +16,7 @@ import SearchPage from "./pages/Search";
 const queryClient = new QueryClient();
 
 function CartSidebarHost() {
-  const { isOpen, open, close, cart, removeFromCart, pinned, togglePinned } = useCart();
+  const { isOpen, open, close, cart, removeFromCart, increment, decrement, pinned, togglePinned } = useCart();
   const navigate = useNavigate();
   const escCloseRef = useRef(false);
   return (
@@ -34,6 +34,8 @@ function CartSidebarHost() {
         return close();
       }}
       cart={cart}
+      onIncrement={increment}
+      onDecrement={decrement}
       onRemoveFromCart={removeFromCart}
       onCheckout={() => {
         // On checkout, force close and do not change pin state

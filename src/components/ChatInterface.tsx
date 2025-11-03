@@ -79,7 +79,7 @@ function ChatContent() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { textInput } = usePromptInputController();
   const [messages, setMessages] = useState<Message[]>([]);
-  const { cart, addToCart, open: openCart } = useCart();
+  const { cart, open: openCart, totalCount } = useCart();
   const [registerOpen, setRegisterOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -222,15 +222,13 @@ function ChatContent() {
                       </div>
                     ) : (
                       <div className="w-full max-w-full space-y-3">
-                        <p className="text-foreground">{message.content}</p>
+                        <div className="max-w-2xl rounded-2xl px-4 py-3 bg-muted text-foreground">
+                          <p>{message.content}</p>
+                        </div>
                         {isProductsMessage(message) && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
                             {message.data.map((product) => (
-                              <ProductCard
-                                key={product.id}
-                                product={product}
-                                onAddToCart={addToCart}
-                              />
+                              <ProductCard key={product.id} product={product} />
                             ))}
                           </div>
                         )}
@@ -286,7 +284,7 @@ function ChatContent() {
                   onClick={() => openCart()}
                 >
                   <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
-                  Cart ({cart.length})
+                  Cart ({totalCount})
                 </Button>
                 <Button
                   variant="outline"
@@ -363,7 +361,7 @@ function ChatContent() {
                   <ShoppingCart className="w-5 h-5" />
                   <span className="text-sm font-medium">View Cart</span>
                   <span className="text-xs text-muted-foreground">
-                    {cart.length} item{cart.length !== 1 ? "s" : ""}
+                    {totalCount} item{totalCount !== 1 ? "s" : ""}
                   </span>
                 </Button>
                 <Button

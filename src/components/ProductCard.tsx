@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { ShoppingCart, ExternalLink } from "lucide-react";
+import { ShoppingCart, ExternalLink, Minus, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useCart } from "@/contexts/CartContext";
 
 type Product = {
   id: string;
@@ -18,12 +19,17 @@ type Product = {
 
 type ProductCardProps = {
   product: Product;
-  onAddToCart: (product: Product) => void;
 };
 
-export function ProductCard({ product, onAddToCart }: ProductCardProps) {
+export function ProductCard({ product }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const navigate = useNavigate();
+  const { cart, addToCart, increment, decrement } = useCart();
+
+  const quantity = useMemo(() => {
+    const item = cart.find((ci) => ci.product.id === product.id);
+    return item?.quantity ?? 0;
+  }, [cart, product.id]);
 
   return (
     <Card 
@@ -75,8 +81,8 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
             <span className="text-xl font-bold text-primary">${product.price.toFixed(2)}</span>
           </div>
 
-          {/* Action Buttons - Show on hover or always on mobile */}
-          <div className={`flex gap-2 transition-all duration-300 ${isHovered ? 'opacity-100' : 'opacity-0 md:opacity-100'}`}>
+          {/* Action Buttons / Quantity Controls */}
+          <div className={`flex gap-2 items-center transition-all duration-300 ${isHovered ? 'opacity-100' : 'opacity-0 md:opacity-100'}`}>
             <Button
               size="sm"
               variant="outline"
@@ -86,14 +92,26 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
               <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
               Details
             </Button>
-            <Button
-              size="sm"
-              className="flex-1"
-              onClick={() => onAddToCart(product)}
-            >
-              <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
-              Add
-            </Button>
+            {quantity > 0 ? (
+              <div className="flex items-center gap-1">
+                <Button size="sm" variant="outline" className="h-8 w-8" onClick={() => decrement(product.id)}>
+                  <Minus className="w-3.5 h-3.5" />
+                </Button>
+                <div className="w-8 text-center text-sm tabular-nums">{quantity}</div>
+                <Button size="sm" variant="outline" className="h-8 w-8" onClick={() => increment(product.id)}>
+                  <Plus className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                className="flex-1"
+                onClick={() => addToCart(product)}
+              >
+                <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
+                Add
+              </Button>
+            )}
           </div>
         </div>
       </CardContent>

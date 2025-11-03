@@ -10,11 +10,20 @@ export type Product = {
   images: string[];
 };
 
+export type CartItem = {
+  product: Product;
+  quantity: number;
+};
+
 type CartContextValue = {
-  cart: Product[];
-  addToCart: (product: Product) => void;
+  cart: CartItem[];
+  addToCart: (product: Product, quantity?: number) => void;
+  increment: (productId: string) => void;
+  decrement: (productId: string) => void;
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
+  totalCount: number;
+  totalAmount: number;
   isOpen: boolean;
   open: () => void;
   close: () => void;
@@ -26,7 +35,7 @@ type CartContextValue = {
 const CartContext = createContext<CartContextValue | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [cart, setCart] = useState<Product[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [pinned, setPinned] = useState<boolean>(() => {
     try {
@@ -46,9 +55,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const addToCart = useCallback((product: Product) => {
+  const addToCart = useCallback((product: Product, quantity: number = 1) => {
     setCart((prev) => {
-      const next = [...prev, product];
+      const idx = prev.findIndex((ci) => ci.product.id === product.id);
+      let next: CartItem[];
+      if (idx >= 0) {
+        next = prev.map((ci, i) =>
+          i === idx ? { ...ci, quantity: ci.quantity + quantity } : ci
+        );
+      } else {
+        next = [...prev, { product, quantity }];
+      }
       // Open the cart when the first item is added
       if (prev.length === 0) {
         setIsOpen(true);
@@ -57,8 +74,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const increment = useCallback((productId: string) => {
+    setCart((prev) =>
+      prev.map((ci) =>
+        ci.product.id === productId ? { ...ci, quantity: ci.quantity + 1 } : ci
+      )
+    );
+  }, []);
+
+  const decrement = useCallback((productId: string) => {
+    setCart((prev) =>
+      prev
+        .map((ci) =>
+          ci.product.id === productId ? { ...ci, quantity: ci.quantity - 1 } : ci
+        )
+        .filter((ci) => ci.quantity > 0)
+    );
+  }, []);
+
   const removeFromCart = useCallback((productId: string) => {
-    setCart((prev) => prev.filter((p) => p.id !== productId));
+    setCart((prev) => prev.filter((ci) => ci.product.id !== productId));
   }, []);
 
   const clearCart = useCallback(() => setCart([]), []);
@@ -85,9 +120,49 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   }, [persistPinned]);
 
+  const totalCount = useMemo(
+    () => cart.reduce((sum, ci) => sum + ci.quantity, 0),
+    [cart]
+  );
+
+  const totalAmount = useMemo(
+    () => cart.reduce((sum, ci) => sum + ci.product.price * ci.quantity, 0),
+    [cart]
+  );
+
   const value = useMemo(
-    () => ({ cart, addToCart, removeFromCart, clearCart, isOpen, open, close, toggle, pinned, togglePinned }),
-    [cart, addToCart, removeFromCart, clearCart, isOpen, open, close, toggle, pinned, togglePinned]
+    () => ({
+      cart,
+      addToCart,
+      increment,
+      decrement,
+      removeFromCart,
+      clearCart,
+      totalCount,
+      totalAmount,
+      isOpen,
+      open,
+      close,
+      toggle,
+      pinned,
+      togglePinned,
+    }),
+    [
+      cart,
+      addToCart,
+      increment,
+      decrement,
+      removeFromCart,
+      clearCart,
+      totalCount,
+      totalAmount,
+      isOpen,
+      open,
+      close,
+      toggle,
+      pinned,
+      togglePinned,
+    ]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
