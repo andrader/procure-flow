@@ -1,5 +1,6 @@
 import express, { type Request, type Response, type NextFunction } from "express";
 import { products, conversations, addProduct, type Product } from "./data.js";
+import { filterProductsByQuery } from "./lib/search.js";
 import { handleChat } from "./handlers/chat.js";
 
 import path from "path";
@@ -67,39 +68,23 @@ app.get("/api/health", (req: Request, res: Response) => {
 app.get("/api/products", (req: Request, res: Response) => {
   const qRaw = (req.query.q || "").toString();
   const q = qRaw.trim();
+  let list: Product[] = [];
   if (q) {
-    // Normalize a string: lowercase, replace non-alphanum with spaces, collapse spaces
-    const normalize = (s: string | undefined): string =>
-      String(s || "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, " ")
-        .trim()
-        .replace(/\s+/g, " ");
-
-    // Basic stopwords to ignore from casual queries like "show me" etc.
-    const STOPWORDS = new Set(["show", "me", "find", "finds", "please", "items", "item", "matching", "the", "a", "an", "for"]);
-
-    const tokens = normalize(q)
-      .split(" ")
-      .map((t) => t.trim())
-      .filter((t) => t && !STOPWORDS.has(t));
-
-    const filtered = products.filter((p: Product) => {
-      const hay = normalize([p.name, p.description, p.category].filter(Boolean).join(" "));
-      // every token must appear in the haystack (allow simple plural match)
-      return tokens.every((tok) => {
-        if (!tok) return true;
-        if (hay.includes(tok)) return true;
-        // naive plural handling: if token ends with 's', try without it
-        if (tok.endsWith("s") && hay.includes(tok.slice(0, -1))) return true;
-        // if token is two-char like 'usb' and next token is 'c', also accept combined 'usb c' matching
-        return false;
-      });
-    });
-
-    return res.json({ count: filtered.length, data: filtered, query: qRaw });
+    list = filterProductsByQuery(products as Product[], q);
+  } else {
+    list = products as Product[];
   }
-  res.json({ count: products.length, data: products });
+  // Normalize output shape to the fields used by the UI
+  const data = list.map((p) => ({
+    id: p.id,
+    name: p.name,
+    category: p.category,
+    description: p.description,
+    price: p.price,
+    status: p.status,
+    images: p.images || [],
+  }));
+  res.json({ count: data.length, data, ...(q ? { query: qRaw } : {}) });
 });
 
 // Product detail

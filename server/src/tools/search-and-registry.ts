@@ -1,48 +1,13 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { addProduct, products, type Product } from "../data.js";
+import { filterProductsByQuery } from "../lib/search.js";
 
 // search_items function (migrated & renamed from searchProductsTool)
 export async function search_items({ criteria }: { criteria: string }) {
   const query = criteria;
   console.log(`[Tool] Searching products for: "${query}"`);
-
-  const normalize = (s: string | undefined): string =>
-    String(s || "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, " ")
-      .trim()
-      .replace(/\s+/g, " ");
-
-  const STOPWORDS = new Set([
-    "show",
-    "me",
-    "find",
-    "finds",
-    "please",
-    "items",
-    "item",
-    "matching",
-    "the",
-    "a",
-    "an",
-    "for",
-  ]);
-
-  const tokens = normalize(query)
-    .split(" ")
-    .map((t) => t.trim())
-    .filter((t) => t && !STOPWORDS.has(t));
-
-  const filtered = products.filter((p: Product) => {
-    const hay = normalize([p.name, p.description, p.category].filter(Boolean).join(" "));
-    return tokens.every((tok) => {
-      if (!tok) return true;
-      if (hay.includes(tok)) return true;
-      if (tok.endsWith("s") && hay.includes(tok.slice(0, -1))) return true;
-      return false;
-    });
-  });
+  const filtered = filterProductsByQuery(products as Product[], query);
 
   console.log(`[Tool] Found ${filtered.length} products`);
 
