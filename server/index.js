@@ -1,8 +1,14 @@
 import express from "express";
 import { products, conversations, addProduct } from "./data.js";
+import { convertToModelMessages, streamText } from "ai";
+import { openai } from "@ai-sdk/openai";
 
 import path from "path";
 import { fileURLToPath } from "url";
+
+
+import dotenv from 'dotenv';
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -16,10 +22,40 @@ const __dirname = path.dirname(__filename);
 // Basic JSON and CORS middleware (no external deps required)
 app.use(express.json());
 app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  const origin = req.headers.origin || "*";
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  // Allow common methods
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  if (req.method === "OPTIONS") return res.sendStatus(204);
+
+  // Reflect requested headers if present, otherwise allow a safe superset
+  const requested = req.header("Access-Control-Request-Headers");
+  if (requested) {
+    res.setHeader("Access-Control-Allow-Headers", requested);
+    res.setHeader("Vary", "Origin, Access-Control-Request-Headers");
+  } else {
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      [
+        "Content-Type",
+        "Authorization",
+        "User-Agent",
+        "Accept",
+        "Accept-Language",
+        "Cache-Control",
+        "Pragma",
+        "X-Requested-With",
+        // AI SDK / streaming related headers (future-proof)
+        "AI-Data-Stream-Version",
+        "X-Data-Stream-Version",
+      ].join(", ")
+    );
+    res.setHeader("Vary", "Origin");
+  }
+
+  // Short-circuit preflight
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
   next();
 });
 
@@ -29,6 +65,7 @@ app.use(express.static(path.join(__dirname, "../dist")));
 
 // Health
 app.get("/api/health", (req, res) => {
+  console.log("Received /api/health request");
   res.json({ status: "ok", now: new Date().toISOString() });
 });
 
@@ -102,6 +139,35 @@ app.post("/api/checkout", (req, res) => {
   res.json({ success: true, message: `Order confirmed for ${Array.isArray(cart) ? cart.length : 0} items.`, total });
 });
 
+// AI chat endpoint - streams UI messages compatible with @ai-sdk/react useChat
+app.post("/api/chat", async (req, res) => {
+  console.log("Received /api/chat request");
+  try {
+    const { messages = [] } = req.body || {};
+
+    // Optional: quick config guard
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ error: "Server not configured: missing OPENAI_API_KEY" });
+    }
+
+    const result = streamText({
+      model: openai("gpt-5-nano"),
+      system: "You are ProcureFlow's helpful assistant. Be concise. When users search for products, summarize and guide next actions like adding to cart or registering items.",
+      // Convert UI messages from the client to provider messages
+      messages: convertToModelMessages(messages),
+    });
+
+    // Stream as UI messages directly to the Express response
+    result.pipeUIMessageStreamToResponse(res);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("/api/chat error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "An error occurred." });
+    }
+  }
+});
+
 
 
 // For SPA routing (fallback for non-API routes)
@@ -112,4 +178,9 @@ app.get("/", (req, res) => {
 app.listen(PORT, () => {
   // eslint-disable-next-line no-console
   console.log(`Server running on http://localhost:${PORT}`);
+
+  // Optional: quick config guard
+  if (!process.env.OPENAI_API_KEY) {
+    console.warn("Warning: OPENAI_API_KEY not set. AI chat endpoint will not work.");
+  }
 });
