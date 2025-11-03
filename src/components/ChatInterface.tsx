@@ -126,11 +126,13 @@ function ChatContent() {
     setMessages((prev) => [...prev, userMessage]);
 
     // Call backend to search products
+    let foundCount = -1; // track results; -1 means unknown/error, 0 means none found
     try {
       const res = await axios.get(`${API_BASE}/api/products`, {
         params: { q: message.text || "" },
       });
       const data: Product[] = Array.isArray(res.data?.data) ? res.data.data : [];
+      foundCount = data.length;
       const aiMessage: AssistantProductsMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -153,9 +155,10 @@ function ChatContent() {
       ]);
     }
 
-    // Also send to AI chat for a natural-language response
+    // Also send to AI chat for a natural-language response — but only if zero products found
     try {
-      if (message.text?.trim() || (message.files && message.files.length > 0)) {
+      const hasInput = !!message.text?.trim() || (message.files && message.files.length > 0);
+      if (hasInput && foundCount === 0) {
         await sendMessage({ text: message.text ?? "", files: message.files });
       }
     } catch (err) {
