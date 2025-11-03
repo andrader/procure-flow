@@ -256,9 +256,9 @@ function ChatContent() {
                 </div>
                 {/* Greeting */}
                 <div className="space-y-3">
-                  <h1 className="text-4xl font-bold text-foreground">Welcome to ProcureFlow</h1>
+                  <h1 className="text-4xl text-foreground">Welcome to <span className="text-accent font-bold">ProcureFlow</span></h1>
                   <p className="text-3xl font-medium">
-                    How Can I <span className="text-accent">Assist You Today</span>?
+                    How can I <span className="text-accent">assist you today</span>?
                   </p>
                 </div>
               </div>
