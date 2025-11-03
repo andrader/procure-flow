@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ShoppingCart, Package, CreditCard, List, Upload, X } from "lucide-react";
@@ -49,78 +50,8 @@ type Product = {
   images: string[];
 };
 
-const mockProducts: Product[] = [
-  {
-    id: "1",
-    name: "USB-C Cable 2m",
-    category: "Electronics",
-    description: "High-speed USB-C charging cable with durable braided design",
-    price: 12.99,
-    status: "In Stock",
-    images: [
-      "https://images.unsplash.com/photo-1625948515291-69613efd103f?w=800&q=80",
-      "https://images.unsplash.com/photo-1591290619762-c588f3286e8c?w=800&q=80",
-    ],
-  },
-  {
-    id: "2",
-    name: "USB-C Cable 1m",
-    category: "Electronics",
-    description: "Compact USB-C cable for desktop use",
-    price: 9.99,
-    status: "In Stock",
-    images: [
-      "https://images.unsplash.com/photo-1625948515291-69613efd103f?w=800&q=80",
-    ],
-  },
-  {
-    id: "3",
-    name: "USB-C to USB-A Adapter",
-    category: "Electronics",
-    description: "Connect USB-C devices to USB-A ports",
-    price: 7.99,
-    status: "In Stock",
-    images: [
-      "https://images.unsplash.com/photo-1625948515291-69613efd103f?w=800&q=80",
-    ],
-  },
-  {
-    id: "4",
-    name: "USB-C Hub 4-Port",
-    category: "Electronics",
-    description: "Expand your connectivity with multiple ports",
-    price: 34.99,
-    status: "In Stock",
-    images: [
-      "https://images.unsplash.com/photo-1625948515291-69613efd103f?w=800&q=80",
-      "https://images.unsplash.com/photo-1591290619762-c588f3286e8c?w=800&q=80",
-    ],
-  },
-  {
-    id: "5",
-    name: "Wireless Mouse",
-    category: "Electronics",
-    description: "Ergonomic wireless mouse with precision tracking",
-    price: 24.99,
-    status: "In Stock",
-    images: [
-      "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=800&q=80",
-      "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=800&q=80",
-    ],
-  },
-  {
-    id: "6",
-    name: "Mechanical Keyboard",
-    category: "Electronics",
-    description: "Premium mechanical keyboard with RGB lighting",
-    price: 89.99,
-    status: "In Stock",
-    images: [
-      "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=800&q=80",
-      "https://images.unsplash.com/photo-1595225476474-87563907a212?w=800&q=80",
-    ],
-  },
-];
+// Base URL for the mock API server
+const API_BASE = (import.meta?.env?.VITE_API_BASE as string) ?? "http://localhost:4000";
 
 function ChatContent() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -137,7 +68,7 @@ function ChatContent() {
   });
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
 
-  const handleSubmit = (message: { text?: string; files?: any[] }, e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (message: { text?: string; files?: any[] }, e: React.FormEvent<HTMLFormElement>) => {
     if (!message.text?.trim() && (!message.files || message.files.length === 0)) return;
 
     const userMessage: Message = {
@@ -148,17 +79,33 @@ function ChatContent() {
 
     setMessages((prev) => [...prev, userMessage]);
 
-    // Simulate AI response with product search
-    setTimeout(() => {
+    // Call backend to search products
+    try {
+      const res = await axios.get(`${API_BASE}/api/products`, {
+        params: { q: message.text || "" },
+      });
+      const data: Product[] = res.data?.data ?? [];
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `I found ${mockProducts.length} items matching "${message.text || ""}"`,
+        content: `I found ${data.length} items matching "${message.text || ""}"`,
         type: "products",
-        data: mockProducts,
+        data,
       };
       setMessages((prev) => [...prev, aiMessage]);
-    }, 500);
+    } catch (err) {
+      // Fallback message
+      // eslint-disable-next-line no-console
+      console.error("Search error:", err);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "Sorry, I couldn't search the catalog right now.",
+        },
+      ]);
+    }
   };
 
   const addToCart = (product: Product) => {
@@ -169,30 +116,46 @@ function ChatContent() {
     setCart((prev) => prev.filter((p) => p.id !== productId));
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newProduct: Product = {
-      id: Date.now().toString(),
+
+    const payload = {
       name: registerForm.name,
       category: registerForm.category,
       description: registerForm.description,
-      price: parseFloat(registerForm.price),
-      status: "Pending Approval",
-      images: uploadedImages.length > 0 ? uploadedImages : ["https://images.unsplash.com/photo-1625948515291-69613efd103f?w=800&q=80"],
+      price: parseFloat(registerForm.price || "0"),
+      images: uploadedImages,
     };
-    
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: `Item "${newProduct.name}" has been registered successfully and is pending approval.`,
-      },
-    ]);
-    
-    setRegisterForm({ name: "", category: "", description: "", price: "" });
-    setUploadedImages([]);
-    setShowView("chat");
+
+    try {
+      const res = await axios.post(`${API_BASE}/api/register`, payload);
+      const product: Product | undefined = res.data?.product;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: product
+            ? `Item "${product.name}" has been registered successfully and is pending approval.`
+            : "Item registered.",
+        },
+      ]);
+
+      setRegisterForm({ name: "", category: "", description: "", price: "" });
+      setUploadedImages([]);
+      setShowView("chat");
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Register error:", err);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: "Failed to register item. Please try again.",
+        },
+      ]);
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -212,17 +175,32 @@ function ChatContent() {
     setUploadedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleCheckout = () => {
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: `Order confirmed! ${cart.length} items totaling $${cart.reduce((sum, p) => sum + p.price, 0).toFixed(2)} will be processed.`,
-      },
-    ]);
-    setCart([]);
-    setShowView("chat");
+  const handleCheckout = async () => {
+    try {
+      const res = await axios.post(`${API_BASE}/api/checkout`, { cart });
+      const message = res.data?.message || `Order confirmed for ${cart.length} items.`;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: message,
+        },
+      ]);
+      setCart([]);
+      setShowView("chat");
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Checkout error:", err);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: "Checkout failed. Please try again.",
+        },
+      ]);
+    }
   };
 
   return (

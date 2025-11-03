@@ -4,7 +4,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { ArrowLeft, ShoppingCart } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
+
+const API_BASE = (import.meta?.env?.VITE_API_BASE as string) ?? "http://localhost:4000";
 
 type Product = {
   id: string;
@@ -16,63 +19,56 @@ type Product = {
   images: string[];
 };
 
-const mockProducts: Product[] = [
-  {
-    id: "1",
-    name: "USB-C Cable 2m",
-    category: "Electronics",
-    description: "High-speed USB-C charging cable with durable braided design. Supports fast charging up to 100W and data transfer speeds up to 480Mbps. Perfect for charging laptops, tablets, and smartphones.",
-    price: 12.99,
-    status: "In Stock",
-    images: [
-      "https://images.unsplash.com/photo-1625948515291-69613efd103f?w=800&q=80",
-      "https://images.unsplash.com/photo-1591290619762-c588f3286e8c?w=800&q=80",
-    ],
-  },
-  {
-    id: "2",
-    name: "USB-C Cable 1m",
-    category: "Electronics",
-    description: "Compact USB-C cable ideal for desktop use. High-quality construction ensures reliable performance.",
-    price: 9.99,
-    status: "In Stock",
-    images: [
-      "https://images.unsplash.com/photo-1625948515291-69613efd103f?w=800&q=80",
-    ],
-  },
-  {
-    id: "3",
-    name: "USB-C to USB-A Adapter",
-    category: "Electronics",
-    description: "Seamlessly connect USB-C devices to USB-A ports. Compact and portable design.",
-    price: 7.99,
-    status: "In Stock",
-    images: [
-      "https://images.unsplash.com/photo-1625948515291-69613efd103f?w=800&q=80",
-    ],
-  },
-  {
-    id: "4",
-    name: "USB-C Hub 4-Port",
-    category: "Electronics",
-    description: "Expand your connectivity with this premium 4-port USB-C hub. Features multiple ports for all your devices.",
-    price: 34.99,
-    status: "In Stock",
-    images: [
-      "https://images.unsplash.com/photo-1625948515291-69613efd103f?w=800&q=80",
-      "https://images.unsplash.com/photo-1591290619762-c588f3286e8c?w=800&q=80",
-    ],
-  },
-];
-
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [addedToCart, setAddedToCart] = useState(false);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
-  const product = mockProducts.find((p) => p.id === id);
+  useEffect(() => {
+    let mounted = true;
+    if (!id) {
+      setLoading(false);
+      setNotFound(true);
+      return;
+    }
 
-  if (!product) {
+    setLoading(true);
+    setNotFound(false);
+    axios
+      .get(`${API_BASE}/api/products/${id}`)
+      .then((res) => {
+        if (!mounted) return;
+        setProduct(res.data || null);
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error("Product fetch error:", err);
+        if (err?.response?.status === 404) setNotFound(true);
+        else setNotFound(true);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center">
+          <p className="text-lg">Loading product...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (notFound || !product) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center space-y-4">
