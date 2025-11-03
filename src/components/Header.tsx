@@ -1,13 +1,34 @@
 import { Button } from "@/components/ui/button";
-import { Bell, Moon, Settings, SquarePen, ShoppingCart } from "lucide-react";
+import { Bell, Moon, Sun, Settings, SquarePen, ShoppingCart } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCart } from "@/contexts/CartContext";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export function Header() {
-  const { open: openCart, cart } = useCart();
+  const { open: openCart, totalCount } = useCart();
+  const [isLight, setIsLight] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem("theme");
+      return saved === "light";
+    } catch {
+      return false;
+    }
+  });
 
-  const cartCount = cart.length;
+  useEffect(() => {
+    try {
+      const root = document.documentElement;
+      if (isLight) {
+        root.classList.add("light");
+        localStorage.setItem("theme", "light");
+      } else {
+        root.classList.remove("light");
+        localStorage.setItem("theme", "dark");
+      }
+    } catch {
+      // noop
+    }
+  }, [isLight]);
   const handleNewChat = () => {
     window.dispatchEvent(new CustomEvent("new-chat"));
   };
@@ -45,9 +66,9 @@ export function Header() {
           onClick={openCart}
         >
           <ShoppingCart className="w-4 h-4" />
-          {cartCount > 0 && (
+          {totalCount > 0 && (
             <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-primary text-primary-foreground text-[10px] leading-[18px] grid place-items-center px-1">
-              {cartCount}
+              {totalCount}
             </span>
           )}
         </Button>
@@ -55,8 +76,8 @@ export function Header() {
           <Bell className="w-4 h-4" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full"></span>
         </Button>
-        <Button variant="ghost" size="icon" className="w-9 h-9">
-          <Moon className="w-4 h-4" />
+        <Button variant="ghost" size="icon" className="w-9 h-9" onClick={() => setIsLight((v) => !v)} aria-label="Toggle theme" title="Toggle theme">
+          {isLight ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </Button>
         <Button variant="ghost" size="icon" className="w-9 h-9">
           <Settings className="w-4 h-4" />
