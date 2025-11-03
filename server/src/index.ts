@@ -196,15 +196,13 @@ app.post("/api/chat", async (req: Request, res: Response) => {
     }
 
     const result = streamText({
-      model: openai("gpt-4o-mini"),
+      model: openai("gpt-5-nano"),
       system: `You are ProcureFlow's helpful assistant. You help users find products in the procurement catalog.
       
 When users ask about products:
-1. Use the searchProducts tool to search the catalog
-2. Summarize the results in a friendly way
-3. Suggest next actions like adding items to cart or registering new items
-
-Be concise and helpful.`,
+1. Use the searchProducts tool to search the catalog. No need to return/describe/list the items found.
+2. You may suggest, very concisely, next actions like adding items to cart or registering new items.
+`,
       messages: convertToModelMessages(messages),
       // Enable multi-step tool calling
       stopWhen: stepCountIs(5),
