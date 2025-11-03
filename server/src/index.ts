@@ -1,7 +1,7 @@
 import express, { type Request, type Response, type NextFunction } from "express";
 import { products, conversations, addProduct, type Product } from "./data.js";
-import { searchProductsTool } from "./tools/searchProducts.js";
-import { addToCartTool } from "./tools/addToCart.js";
+import { search_items } from "./tools/search-and-registry.js";
+import { add_to_cart } from "./tools/cart.js";
 import { convertToModelMessages, streamText, tool, stepCountIs } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
@@ -167,7 +167,7 @@ When users ask about products:
           inputSchema: z.object({
             query: z.string().describe('The search query to find products'),
           }),
-          execute: searchProductsTool,
+          execute: async ({ query }: { query: string }) => search_items({ criteria: query }),
         }),
         addToCart: tool({
           description: 'Add a product to the user\'s shopping cart with an optional quantity.',
@@ -181,7 +181,8 @@ When users ask about products:
               .default(1)
               .describe('Quantity to add (defaults to 1)'),
           }),
-          execute: addToCartTool,
+          execute: async ({ productId, quantity }: { productId: string; quantity: number }) =>
+            add_to_cart({ item_id: productId, quantity }),
         }),
       },
     });
