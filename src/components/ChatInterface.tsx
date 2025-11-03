@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport, type UIMessage } from "ai";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Package, CreditCard, List } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
@@ -81,6 +83,29 @@ function ChatContent() {
   const [registerOpen, setRegisterOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
+  // AI chat hook: send user prompts to backend and append assistant reply to our message list
+  const { sendMessage, status } = useChat({
+    transport: new DefaultChatTransport({
+      api: `${API_BASE}/api/chat`,
+    }),
+    onFinish: ({ message }) => {
+      // Extract plain text from UIMessage parts
+      const text = message.parts
+        .map((part) => (part.type === "text" ? part.text : ""))
+        .join("")
+        .trim();
+      if (text) {
+        const aiMessage: AssistantTextMessage = {
+          id: (Date.now() + Math.random()).toString(),
+          role: "assistant",
+          content: text,
+          type: "text",
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+      }
+    },
+  });
+
   // Type guard to narrow assistant product messages
   const isProductsMessage = (
     m: Message
@@ -126,6 +151,16 @@ function ChatContent() {
           content: "Sorry, I couldn't search the catalog right now.",
         },
       ]);
+    }
+
+    // Also send to AI chat for a natural-language response
+    try {
+      if (message.text?.trim() || (message.files && message.files.length > 0)) {
+        await sendMessage({ text: message.text ?? "", files: message.files });
+      }
+    } catch (err) {
+      // Swallow errors; UI already shows product results or fallback
+      console.log("AI chat error:", err);
     }
   };
 
@@ -205,6 +240,7 @@ function ChatContent() {
                 textareaRef={textareaRef}
                 accept="image/*"
                 multiple
+                status={status}
               />
 
               {/* Action Buttons */}
@@ -270,6 +306,7 @@ function ChatContent() {
                   textareaRef={textareaRef}
                   accept="image/*"
                   multiple
+                  status={status}
                 />
               </div>
 

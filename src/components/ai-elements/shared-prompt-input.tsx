@@ -13,6 +13,7 @@ import {
 import { useProviderAttachments } from "@/components/ai-elements/prompt-input";
 import { ImageIcon } from "lucide-react";
 import { PromptInputButton } from "./prompt-input";
+import type { ChatStatus } from "ai";
 
 type SharedPromptInputProps = {
   onSubmit: (message: PromptInputMessage, e: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
@@ -20,6 +21,7 @@ type SharedPromptInputProps = {
   placeholder?: string;
   accept?: string;
   multiple?: boolean;
+  status?: ChatStatus;
 };
 
 export function SharedPromptInput({
@@ -28,6 +30,7 @@ export function SharedPromptInput({
   placeholder = "Search or register new products, add to cart and buy, or ask anything...",
   accept,
   multiple,
+  status,
 }: SharedPromptInputProps) {
   const attachments = useProviderAttachments();
   return (
@@ -61,7 +64,7 @@ export function SharedPromptInput({
         </PromptInputTools>
         <div className="flex items-center gap-1">
           <PromptInputSpeechButton textareaRef={textareaRef} />
-          <PromptInputSubmit />
+          <PromptInputSubmit status={status} />
         </div>
       </PromptInputFooter>
     </PromptInput>
