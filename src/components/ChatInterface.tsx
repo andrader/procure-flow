@@ -267,7 +267,7 @@ function ChatContent() {
       </Conversation>
 
       {/* Input Area */}
-      <div className="border-t border-border bg-card/50 backdrop-blur-sm p-4">
+      <div className="p-4">
           <div className="max-w-3xl mx-auto">
             <PromptInput
               onSubmit={handleSubmit}
@@ -284,7 +284,7 @@ function ChatContent() {
                 </PromptInputTools>
               </PromptInputHeader>
               <PromptInputTextarea
-                placeholder="Ask me anything..."
+                placeholder="Search or register new products, add to cart and buy, or ask anything..."
                 ref={textareaRef}
               />
               <PromptInputFooter>
