@@ -1,8 +1,17 @@
 import express from "express";
 import { products, conversations, addProduct } from "./data.js";
 
+import path from "path";
+import { fileURLToPath } from "url";
+
 const app = express();
 const PORT = process.env.PORT || 4000;
+
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+
 
 // Basic JSON and CORS middleware (no external deps required)
 app.use(express.json());
@@ -13,6 +22,10 @@ app.use((req, res, next) => {
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
+
+// Serve static files from the dist/ directory
+app.use(express.static(path.join(__dirname, "../dist")));
+
 
 // Health
 app.get("/api/health", (req, res) => {
@@ -89,7 +102,14 @@ app.post("/api/checkout", (req, res) => {
   res.json({ success: true, message: `Order confirmed for ${Array.isArray(cart) ? cart.length : 0} items.`, total });
 });
 
+
+
+// For SPA routing (fallback for non-API routes)
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "../dist", "index.html"));
+});
+
 app.listen(PORT, () => {
   // eslint-disable-next-line no-console
-  console.log(`Mock API server running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
