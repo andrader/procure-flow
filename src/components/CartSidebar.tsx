@@ -32,8 +32,12 @@ export function CartSidebar({
   const cartTotal = cart.reduce((sum, p) => sum + p.price, 0);
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:w-[400px] sm:max-w-[400px] flex flex-col">
+    <Sheet open={open} onOpenChange={onOpenChange} modal={false}>
+      <SheetContent
+        side="right"
+        className="w-full sm:w-[400px] sm:max-w-[400px] flex flex-col"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <ShoppingCart className="w-5 h-5" />

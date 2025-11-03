@@ -156,8 +156,19 @@ function ChatContent() {
     setRegisterOpen(false);
   };
 
+  // Listen for global "new-chat" event from Header to reset the conversation
+  useEffect(() => {
+    const handler = () => {
+      setMessages([]);
+      // Clear input if present
+      textInput.setInput("");
+    };
+    window.addEventListener("new-chat", handler);
+    return () => window.removeEventListener("new-chat", handler);
+  }, [textInput]);
+
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-full min-h-0">
       {/* Messages Area */}
       <Conversation>
         <AutoScroll messages={messages} />

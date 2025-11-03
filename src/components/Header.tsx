@@ -1,15 +1,29 @@
 import { Button } from "@/components/ui/button";
-import { Bell, Moon, Settings, User } from "lucide-react";
+import { Bell, Moon, Settings, MessageSquarePlus, ShoppingCart } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useCart } from "@/contexts/CartContext";
+import { useMemo } from "react";
 
 export function Header() {
+  const { open: openCart, cart } = useCart();
+
+  const cartCount = cart.length;
+  const handleNewChat = () => {
+    window.dispatchEvent(new CustomEvent("new-chat"));
+  };
   return (
-    <header className="h-14 border-b border-border flex items-center justify-between px-4 bg-card/50 backdrop-blur-sm">
+    <header className="h-14 flex items-center justify-between px-4 bg-card/50 backdrop-blur-sm">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="w-9 h-9">
-          <div className="w-5 h-5 bg-primary rounded-md flex items-center justify-center">
-            <span className="text-xs font-bold text-primary-foreground">P</span>
-          </div>
+        {/* New empty chat (icon-only) */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="w-9 h-9"
+          aria-label="New chat"
+          title="New chat"
+          onClick={handleNewChat}
+        >
+          <MessageSquarePlus className="w-4 h-4" />
         </Button>
         <div className="relative">
           <Input
@@ -21,6 +35,22 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Cart button top-right */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="w-9 h-9 relative"
+          aria-label="Open cart"
+          title="Open cart"
+          onClick={openCart}
+        >
+          <ShoppingCart className="w-4 h-4" />
+          {cartCount > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-primary text-primary-foreground text-[10px] leading-[18px] grid place-items-center px-1">
+              {cartCount}
+            </span>
+          )}
+        </Button>
         <Button variant="ghost" size="icon" className="w-9 h-9 relative">
           <Bell className="w-4 h-4" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full"></span>
