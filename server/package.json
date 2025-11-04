@@ -3,6 +3,11 @@
   "module": "src/index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "build": "tsc --build",
+    "build:frontend": "cd ../ && bun run build && cd server",
+    "build:all": "bun run build:frontend && bun run build"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/express": "^5.0.5",
