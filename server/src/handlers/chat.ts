@@ -34,7 +34,7 @@ When users ask about products:
 `,
             messages: convertToModelMessages(messages),
             // Enable multi-step tool calling
-            stopWhen: stepCountIs(5),
+            stopWhen: stepCountIs(20),
             tools: {
                 // search and register products tools
                 searchProducts: searchProducts,

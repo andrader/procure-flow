@@ -220,10 +220,10 @@ function ChatContent() {
                                       </div>
                                     );
                                   case "input-available": {
-                                    const input = part.input as { productId: string; quantity?: number };
+                                    const input = part.input as { item_id: string; quantity?: number };
                                     return (
                                       <div key={callId} className="text-sm text-muted-foreground italic">
-                                        Adding to cart: {input.quantity ?? 1} × {input.productId}
+                                        Adding to cart: {input.quantity ?? 1} × {input.item_id}
                                       </div>
                                     );
                                   }
@@ -261,6 +261,200 @@ function ChatContent() {
                                 }
                                 break;
                               }
+                              
+                              // Handle removeFromCart tool calls
+                              case "tool-removeFromCart": {
+                                const callId = part.toolCallId;
+                                switch (part.state) {
+                                  case "input-streaming":
+                                  case "input-available":
+                                    return (
+                                      <div key={callId} className="text-sm text-muted-foreground italic">
+                                        Removing item from cart...
+                                      </div>
+                                    );
+                                  case "output-available": {
+                                    const output = part.output as { success: boolean; message: string };
+                                    return (
+                                      <div key={callId} className="text-sm">
+                                        {output.message}
+                                      </div>
+                                    );
+                                  }
+                                  case "output-error":
+                                    return (
+                                      <div key={callId} className="text-sm text-destructive">
+                                        Failed to remove from cart: {part.errorText}
+                                      </div>
+                                    );
+                                }
+                                break;
+                              }
+
+                              // Handle viewCart tool calls
+                              case "tool-viewCart": {
+                                const callId = part.toolCallId;
+                                switch (part.state) {
+                                  case "output-available": {
+                                    if (!processedToolCalls.current.has(callId)) {
+                                      processedToolCalls.current.add(callId);
+                                      openCart();
+                                    }
+                                    return (
+                                      <div key={callId} className="text-sm text-muted-foreground italic">
+                                        Opening cart...
+                                      </div>
+                                    );
+                                  }
+                                  case "output-error":
+                                    return (
+                                      <div key={callId} className="text-sm text-destructive">
+                                        Error: {part.errorText}
+                                      </div>
+                                    );
+                                }
+                                break;
+                              }
+
+                              // Handle registerProduct tool calls
+                              case "tool-registerProduct": {
+                                const callId = part.toolCallId;
+                                switch (part.state) {
+                                  case "input-streaming":
+                                  case "input-available":
+                                    return (
+                                      <div key={callId} className="text-sm text-muted-foreground italic">
+                                        Registering new product...
+                                      </div>
+                                    );
+                                  case "output-available": {
+                                    const output = part.output as { success: boolean; message: string; product?: Product };
+                                    return (
+                                      <div key={callId}>
+                                        <div className="text-sm mb-2">{output.message}</div>
+                                        {output.product && (
+                                          <div className="mt-2">
+                                            <ProductCard product={output.product} />
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  }
+                                  case "output-error":
+                                    return (
+                                      <div key={callId} className="text-sm text-destructive">
+                                        Failed to register product: {part.errorText}
+                                      </div>
+                                    );
+                                }
+                                break;
+                              }
+
+                              // Handle payment method tool calls
+                              case "tool-addPaymentMethod":
+                              case "tool-changePaymentMethod":
+                              case "tool-removePaymentMethod": {
+                                const callId = part.toolCallId;
+                                switch (part.state) {
+                                  case "input-streaming":
+                                  case "input-available":
+                                    return (
+                                      <div key={callId} className="text-sm text-muted-foreground italic">
+                                        Processing payment method...
+                                      </div>
+                                    );
+                                  case "output-available": {
+                                    const output = part.output as { success: boolean; action: string };
+                                    const actionMessages: Record<string, string> = {
+                                      "add-payment-method": "Payment method added successfully",
+                                      "change-payment-method": "Payment method updated successfully",
+                                      "remove-payment-method": "Payment method removed successfully",
+                                    };
+                                    return (
+                                      <div key={callId} className="text-sm">
+                                        {actionMessages[output.action] || "Payment method processed"}
+                                      </div>
+                                    );
+                                  }
+                                  case "output-error":
+                                    return (
+                                      <div key={callId} className="text-sm text-destructive">
+                                        Error processing payment method: {part.errorText}
+                                      </div>
+                                    );
+                                }
+                                break;
+                              }
+
+                              // Handle shipping address tool calls
+                              case "tool-addShippingAddress":
+                              case "tool-changeShippingAddress":
+                              case "tool-removeShippingAddress": {
+                                const callId = part.toolCallId;
+                                switch (part.state) {
+                                  case "input-streaming":
+                                  case "input-available":
+                                    return (
+                                      <div key={callId} className="text-sm text-muted-foreground italic">
+                                        Processing shipping address...
+                                      </div>
+                                    );
+                                  case "output-available": {
+                                    const output = part.output as { success: boolean; action: string };
+                                    const actionMessages: Record<string, string> = {
+                                      "add-shipping-address": "Shipping address added successfully",
+                                      "change-shipping-address": "Shipping address updated successfully",
+                                      "remove-shipping-address": "Shipping address removed successfully",
+                                    };
+                                    return (
+                                      <div key={callId} className="text-sm">
+                                        {actionMessages[output.action] || "Shipping address processed"}
+                                      </div>
+                                    );
+                                  }
+                                  case "output-error":
+                                    return (
+                                      <div key={callId} className="text-sm text-destructive">
+                                        Error processing shipping address: {part.errorText}
+                                      </div>
+                                    );
+                                }
+                                break;
+                              }
+
+                              // Handle finalizePurchase tool calls
+                              case "tool-finalizePurchase": {
+                                const callId = part.toolCallId;
+                                switch (part.state) {
+                                  case "input-streaming":
+                                  case "input-available":
+                                    return (
+                                      <div key={callId} className="text-sm text-muted-foreground italic">
+                                        Preparing checkout...
+                                      </div>
+                                    );
+                                  case "output-available": {
+                                    const output = part.output as { success: boolean; message: string };
+                                    if (!processedToolCalls.current.has(callId)) {
+                                      processedToolCalls.current.add(callId);
+                                      setCheckoutOpen(true);
+                                    }
+                                    return (
+                                      <div key={callId} className="text-sm">
+                                        {output.message}
+                                      </div>
+                                    );
+                                  }
+                                  case "output-error":
+                                    return (
+                                      <div key={callId} className="text-sm text-destructive">
+                                        Error finalizing purchase: {part.errorText}
+                                      </div>
+                                    );
+                                }
+                                break;
+                              }
+
                               default:
                                 return null;
                             }
