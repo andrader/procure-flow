@@ -13,6 +13,15 @@ import {
 } from "@/components/ui/pagination";
 import { ProductCard } from "@/components/ProductCard";
 import { useCart } from "@/contexts/CartContext";
+import { Sparkles } from "lucide-react";
+import {
+  PromptInput,
+  PromptInputBody,
+  PromptInputFooter,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputTools,
+} from "@/components/ai-elements/prompt-input";
 
 const API_BASE = (import.meta?.env?.VITE_API_BASE as string) ?? "http://localhost:4000";
 
@@ -38,6 +47,7 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<Product[]>([]);
+  const [showPrompt, setShowPrompt] = useState(false);
 
   // Fetch whenever q changes
   useEffect(() => {
@@ -88,7 +98,7 @@ export default function SearchPage() {
   // Empty state: just show button to add new
   if (!loading && !error && total === 0) {
     return (
-      <div className="h-screen bg-background overflow-hidden flex flex-col">
+      <div className="h-screen bg-background overflow-hidden flex flex-col relative">
         <Header />
         <div className="flex-1 min-h-0">
           <div className="container mx-auto px-4 py-10 h-full">
@@ -103,12 +113,52 @@ export default function SearchPage() {
             </div>
           </div>
         </div>
+        
+        {/* Floating Sparkle Button */}
+        <Button
+          size="icon"
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all"
+          onClick={() => setShowPrompt(!showPrompt)}
+        >
+          <Sparkles className="h-6 w-6" />
+        </Button>
+
+        {/* Floating Prompt Input */}
+        {showPrompt && (
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-50">
+            <div className="bg-background border rounded-lg shadow-xl">
+              <PromptInput
+                onSubmit={(message) => {
+                  console.log("AI Message:", message);
+                  // Handle AI prompt submission here
+                  setShowPrompt(false);
+                }}
+              >
+                <PromptInputBody>
+                  <PromptInputTextarea placeholder="Ask AI to help you search..." />
+                </PromptInputBody>
+                <PromptInputFooter>
+                  <PromptInputTools>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowPrompt(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </PromptInputTools>
+                  <PromptInputSubmit />
+                </PromptInputFooter>
+              </PromptInput>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-background overflow-hidden flex flex-col">
+    <div className="h-screen bg-background overflow-hidden flex flex-col relative">
       <Header />
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="container mx-auto px-4 py-6 md:py-8">
@@ -129,7 +179,7 @@ export default function SearchPage() {
           {/* Grid of products */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
             {current.map((product) => (
-              <ProductCard key={product.id} product={product} onAddToCart={addToCart} />
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
 
@@ -187,6 +237,46 @@ export default function SearchPage() {
           )}
         </div>
       </div>
+
+      {/* Floating Sparkle Button */}
+      <Button
+        size="icon"
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all"
+        onClick={() => setShowPrompt(!showPrompt)}
+      >
+        <Sparkles className="h-6 w-6" />
+      </Button>
+
+      {/* Floating Prompt Input */}
+      {showPrompt && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-50">
+          <div className="bg-background border rounded-lg shadow-xl">
+            <PromptInput
+              onSubmit={(message) => {
+                console.log("AI Message:", message);
+                // Handle AI prompt submission here
+                setShowPrompt(false);
+              }}
+            >
+              <PromptInputBody>
+                <PromptInputTextarea placeholder="Ask AI to help you search..." />
+              </PromptInputBody>
+              <PromptInputFooter>
+                <PromptInputTools>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowPrompt(false)}
+                  >
+                    Cancel
+                  </Button>
+                </PromptInputTools>
+                <PromptInputSubmit />
+              </PromptInputFooter>
+            </PromptInput>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
