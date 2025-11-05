@@ -14,14 +14,8 @@ import {
 import { ProductCard } from "@/components/ProductCard";
 import { useCart } from "@/contexts/CartContext";
 import { Sparkles } from "lucide-react";
-import {
-  PromptInput,
-  PromptInputBody,
-  PromptInputFooter,
-  PromptInputSubmit,
-  PromptInputTextarea,
-  PromptInputTools,
-} from "@/components/ai-elements/prompt-input";
+import { FloatingPrompt } from "@/components/FloatingPrompt";
+import { ChatWindow } from "@/components/ChatWindow";
 
 const API_BASE = (import.meta?.env?.VITE_API_BASE as string) ?? "http://localhost:4000";
 
@@ -37,6 +31,19 @@ export type Product = {
 
 const PAGE_SIZE = 12;
 
+// modular AI Button
+export function AIButton({ onClick }: { onClick: () => void }) {
+  return (
+    <Button
+      // size="icon"
+      className="h-20 w-20 rounded-full shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-125 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600 group"
+      onClick={onClick}
+    >
+      <Sparkles strokeWidth={1.5} className="!h-10 !w-10 transition-transform duration-300 group-hover:rotate-180" />
+    </Button>
+  );
+}
+
 export default function SearchPage() {
   const navigate = useNavigate();
   const { addToCart } = useCart();
@@ -48,6 +55,8 @@ export default function SearchPage() {
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<Product[]>([]);
   const [showPrompt, setShowPrompt] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [initialChatMessage, setInitialChatMessage] = useState<string | undefined>();
 
   // Fetch whenever q changes
   useEffect(() => {
@@ -115,44 +124,37 @@ export default function SearchPage() {
         </div>
         
         {/* Floating Sparkle Button */}
-        <Button
-          size="icon"
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all"
-          onClick={() => setShowPrompt(!showPrompt)}
-        >
-          <Sparkles className="h-6 w-6" />
-        </Button>
-
-        {/* Floating Prompt Input */}
-        {showPrompt && (
-          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-50">
-            <div className="bg-background border rounded-lg shadow-xl">
-              <PromptInput
-                onSubmit={(message) => {
-                  console.log("AI Message:", message);
-                  // Handle AI prompt submission here
-                  setShowPrompt(false);
-                }}
-              >
-                <PromptInputBody>
-                  <PromptInputTextarea placeholder="Ask AI to help you search..." />
-                </PromptInputBody>
-                <PromptInputFooter>
-                  <PromptInputTools>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowPrompt(false)}
-                    >
-                      Cancel
-                    </Button>
-                  </PromptInputTools>
-                  <PromptInputSubmit />
-                </PromptInputFooter>
-              </PromptInput>
-            </div>
+        {!showChat && (
+          <div className="fixed bottom-6 right-6 z-40">
+            <AIButton onClick={() => setShowPrompt(!showPrompt)} />
           </div>
         )}
+
+        {/* Floating Prompt Input */}
+        <FloatingPrompt
+          isOpen={showPrompt}
+          onClose={() => setShowPrompt(false)}
+          onSubmit={(message) => {
+            console.log("AI Message:", message);
+            setInitialChatMessage(message.text);
+            setShowPrompt(false);
+            setShowChat(true);
+          }}
+        />
+
+        {/* Chat Window */}
+        <ChatWindow
+          isOpen={showChat}
+          onClose={() => {
+            setShowChat(false);
+            setInitialChatMessage(undefined);
+          }}
+          onOpenFullPage={() => {
+            // Navigate to full chat page (you can implement this route)
+            navigate("/chat");
+          }}
+          initialMessage={initialChatMessage}
+        />
       </div>
     );
   }
@@ -239,44 +241,37 @@ export default function SearchPage() {
       </div>
 
       {/* Floating Sparkle Button */}
-      <Button
-        size="icon"
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all"
-        onClick={() => setShowPrompt(!showPrompt)}
-      >
-        <Sparkles className="h-6 w-6" />
-      </Button>
-
-      {/* Floating Prompt Input */}
-      {showPrompt && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-50">
-          <div className="bg-background border rounded-lg shadow-xl">
-            <PromptInput
-              onSubmit={(message) => {
-                console.log("AI Message:", message);
-                // Handle AI prompt submission here
-                setShowPrompt(false);
-              }}
-            >
-              <PromptInputBody>
-                <PromptInputTextarea placeholder="Ask AI to help you search..." />
-              </PromptInputBody>
-              <PromptInputFooter>
-                <PromptInputTools>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowPrompt(false)}
-                  >
-                    Cancel
-                  </Button>
-                </PromptInputTools>
-                <PromptInputSubmit />
-              </PromptInputFooter>
-            </PromptInput>
-          </div>
+      {!showChat && (
+        <div className="fixed bottom-6 right-6 z-40">
+          <AIButton onClick={() => setShowPrompt(!showPrompt)} />
         </div>
       )}
+
+      {/* Floating Prompt Input */}
+      <FloatingPrompt
+        isOpen={showPrompt}
+        onClose={() => setShowPrompt(false)}
+        onSubmit={(message) => {
+          console.log("AI Message:", message);
+          setInitialChatMessage(message.text);
+          setShowPrompt(false);
+          setShowChat(true);
+        }}
+      />
+
+      {/* Chat Window */}
+      <ChatWindow
+        isOpen={showChat}
+        onClose={() => {
+          setShowChat(false);
+          setInitialChatMessage(undefined);
+        }}
+        onOpenFullPage={() => {
+          // Navigate to full chat page (you can implement this route)
+          navigate("/chat");
+        }}
+        initialMessage={initialChatMessage}
+      />
     </div>
   );
 }
