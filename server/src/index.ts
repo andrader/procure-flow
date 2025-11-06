@@ -3,6 +3,7 @@ import { products, conversations, addProduct } from "./data.js";
 import type { Product } from "@shared/types/product";
 import { filterProductsByQuery } from "./lib/search.js";
 import { handleChat } from "./handlers/chat.js";
+import { transcribeHandler } from "./handlers/transcribe.js";
 import { createChat, loadChat } from "./lib/chat-store.js";
 
 import path from "path";
@@ -123,6 +124,9 @@ app.post("/api/checkout", (req: Request, res: Response) => {
 
 // AI chat endpoint - streams UI messages compatible with @ai-sdk/react useChat
 app.post("/api/chat", handleChat);
+
+// Audio transcription endpoint (OpenAI Whisper)
+app.post("/api/transcribe", transcribeHandler);
 
 // Create a new chat and return its id
 app.post("/api/chat/create", async (_req: Request, res: Response) => {

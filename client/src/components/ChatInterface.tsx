@@ -184,15 +184,33 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                           switch (part.type) {
                             case "text":
                               return <p key={i}>{part.text}</p>;
-                            case "file":
+                            case "file": {
+                              const media: string | undefined =
+                                "mediaType" in part ? (part as { mediaType?: string }).mediaType : undefined;
+                              if (media?.startsWith("image/")) {
+                                return (
+                                  <img
+                                    key={i}
+                                    src={part.url}
+                                    alt={part.filename ?? "uploaded image"}
+                                    className="max-w-xs rounded-lg mt-2"
+                                  />
+                                );
+                              }
+                              if (media?.startsWith("audio/")) {
+                                return (
+                                  <audio key={i} controls className="w-full max-w-xs mt-2">
+                                    <source src={part.url} type={media} />
+                                    Your browser does not support the audio element.
+                                  </audio>
+                                );
+                              }
                               return (
-                                <img 
-                                  key={i} 
-                                  src={part.url} 
-                                  alt={part.filename ?? "uploaded image"}
-                                  className="max-w-xs rounded-lg mt-2"
-                                />
+                                <a key={i} href={part.url} target="_blank" rel="noreferrer" className="underline mt-2 inline-block">
+                                  {part.filename ?? "attachment"}
+                                </a>
                               );
+                            }
                             default:
                               return null;
                           }
@@ -211,15 +229,33 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                                     {part.text}
                                   </pre>
                                 );
-                              case "file":
+                              case "file": {
+                                const media: string | undefined =
+                                  "mediaType" in part ? (part as { mediaType?: string }).mediaType : undefined;
+                                if (media?.startsWith("image/")) {
+                                  return (
+                                    <img
+                                      key={i}
+                                      src={part.url}
+                                      alt={part.filename ?? "image"}
+                                      className="max-w-xs rounded-lg mt-2"
+                                    />
+                                  );
+                                }
+                                if (media?.startsWith("audio/")) {
+                                  return (
+                                    <audio key={i} controls className="w-full max-w-xs mt-2">
+                                      <source src={part.url} type={media} />
+                                      Your browser does not support the audio element.
+                                    </audio>
+                                  );
+                                }
                                 return (
-                                  <img 
-                                    key={i} 
-                                    src={part.url} 
-                                    alt={part.filename ?? "generated image"}
-                                    className="max-w-xs rounded-lg mt-2"
-                                  />
+                                  <a key={i} href={part.url} target="_blank" rel="noreferrer" className="underline mt-2 inline-block">
+                                    {part.filename ?? "attachment"}
+                                  </a>
                                 );
+                              }
                               // Handle searchProducts tool calls
                               case "tool-searchProducts": {
                                 const callId = part.toolCallId;
@@ -293,7 +329,8 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                                     // Side-effect: add to cart once for newly streamed messages only
                                     if (
                                       output &&
-                                      (output as any).success === true &&
+                                      "success" in output &&
+                                      (output as { success: boolean }).success === true &&
                                       !processedToolCalls.current.has(callId) &&
                                       isNewMsg
                                     ) {
