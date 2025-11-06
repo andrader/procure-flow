@@ -1,4 +1,4 @@
-import type { Product } from "../data.js";
+import type { Product } from "@shared/types/product";
 
 // Normalize a string: lowercase, replace non-alphanum with spaces, collapse spaces
 export const normalize = (s: string | undefined): string =>

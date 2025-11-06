@@ -1,5 +1,6 @@
 import express, { type Request, type Response, type NextFunction } from "express";
-import { products, conversations, addProduct, type Product } from "./data.js";
+import { products, conversations, addProduct } from "./data.js";
+import type { Product } from "@shared/types/product";
 import { filterProductsByQuery } from "./lib/search.js";
 import { handleChat } from "./handlers/chat.js";
 import { createChat, loadChat } from "./lib/chat-store.js";
