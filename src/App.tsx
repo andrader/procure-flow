@@ -12,6 +12,8 @@ import { CartSidebar } from "@/components/CartSidebar";
 import ProductDetail from "./pages/ProductDetail";
 import NotFound from "./pages/NotFound";
 import SearchPage from "./pages/Search";
+import ChatPage from "./pages/Chat";
+import ChatIdPage from "./pages/ChatId";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +62,8 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/chat/:id" element={<ChatIdPage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />

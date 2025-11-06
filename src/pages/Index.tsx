@@ -1,15 +1,12 @@
-import { ChatInterface } from "@/components/ChatInterface";
-import { Header } from "@/components/Header";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
-  return (
-    <div className="h-screen bg-background overflow-hidden flex flex-col">
-      <Header />
-      <div className="flex-1 min-h-0">
-        <ChatInterface />
-      </div>
-    </div>
-  );
+  const navigate = useNavigate();
+  useEffect(() => {
+    navigate("/chat");
+  }, [navigate]);
+  return null;
 };
 
 export default Index;
