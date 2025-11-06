@@ -17,6 +17,8 @@ import {
 import { Message, MessageContent } from "@/components/ai-elements/message";
 import { Response } from "@/components/ai-elements/response";
 import { Tool, ToolContent, ToolHeader, ToolInput, ToolOutput } from "@/components/ai-elements/tool";
+import { InlineCartView } from "@/components/chat-tools/InlineCartView";
+import { CheckoutSummary } from "@/components/chat-tools/CheckoutSummary";
 import {
   PromptInputProvider,
   type PromptInputMessage,
@@ -292,39 +294,12 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                             <Tool key={`tool-${callId}-${i}`}>
                               <ToolHeader title="viewCart" type={part.type} state={part.state} />
                               <ToolContent>
-                                {part.state === "output-available" ? (
-                                  <div className="w-full">
-                                    <div className="max-w-2xl rounded-2xl px-4 py-3 border bg-background">
-                                      <div className="flex items-center justify-between mb-2">
-                                        <div className="font-medium">Cart</div>
-                                        {!isNewMsg ? (
-                                          <span className="text-xs text-amber-600">Stale view</span>
-                                        ) : (
-                                          <span className="text-xs text-emerald-600">Live snapshot</span>
-                                        )}
-                                      </div>
-                                      {cart.length === 0 ? (
-                                        <div className="text-sm text-muted-foreground">Your cart is empty.</div>
-                                      ) : (
-                                        <div className="space-y-2">
-                                          {cart.map((ci) => (
-                                            <div key={ci.product.id} className="flex items-center justify-between text-sm">
-                                              <div className="truncate mr-2">{ci.product.name}</div>
-                                              <div className="tabular-nums">× {ci.quantity}</div>
-                                              <div className="tabular-nums ml-4">${(ci.product.price * ci.quantity).toFixed(2)}</div>
-                                            </div>
-                                          ))}
-                                          <div className="border-t pt-2 flex items-center justify-between text-sm font-medium">
-                                            <div>Total</div>
-                                            <div className="tabular-nums">${cart.reduce((s, ci) => s + ci.product.price * ci.quantity, 0).toFixed(2)}</div>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                ) : part.state === "output-error" ? (
+                                {part.state === "output-available" && (
+                                  <InlineCartView cart={cart} live={isNewMsg} />
+                                )}
+                                {part.state === "output-error" && (
                                   <div className="text-sm text-destructive">Error: {part.errorText}</div>
-                                ) : null}
+                                )}
                               </ToolContent>
                             </Tool>
                           );
@@ -408,61 +383,13 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                                   <div className="text-sm text-muted-foreground italic">Preparing checkout...</div>
                                 )}
                                 {part.state === "output-available" && (
-                                  <div className="w-full space-y-3">
-                                    <div className="flex items-center justify-between">
-                                      <div className="font-medium">Checkout Summary</div>
-                                      {!isNewMsg ? (
-                                        <span className="text-xs text-amber-600">Stale view</span>
-                                      ) : (
-                                        <span className="text-xs text-emerald-600">Live snapshot</span>
-                                      )}
-                                    </div>
-                                    <div className="space-y-1 text-sm">
-                                      {cart.length === 0 ? (
-                                        <div className="text-muted-foreground">Your cart is empty.</div>
-                                      ) : (
-                                        cart.map((ci) => (
-                                          <div key={ci.product.id} className="flex items-center justify-between">
-                                            <div className="truncate mr-2">{ci.product.name} × {ci.quantity}</div>
-                                            <div className="tabular-nums">${(ci.product.price * ci.quantity).toFixed(2)}</div>
-                                          </div>
-                                        ))
-                                      )}
-                                      <div className="border-t pt-2 flex items-center justify-between font-medium">
-                                        <div>Total</div>
-                                        <div className="tabular-nums">${cart.reduce((s, ci) => s + ci.product.price * ci.quantity, 0).toFixed(2)}</div>
-                                      </div>
-                                    </div>
-                                    <div className="text-sm">
-                                      <div className="mb-1 font-medium">Shipping Address</div>
-                                      <div className="text-muted-foreground">John Doe, 123 Main St, Springfield, USA</div>
-                                    </div>
-                                    <div className="text-sm">
-                                      <div className="mb-1 font-medium">Payment Method</div>
-                                      <div className="text-muted-foreground">Visa •••• 4242</div>
-                                    </div>
-                                    {toolStatus[callId] ? (
-                                      <div className={`text-sm ${toolStatus[callId] === "confirmed" ? "text-emerald-600" : "text-amber-600"}`}>
-                                        {toolStatus[callId] === "confirmed" ? "Order confirmed." : "Order canceled."}
-                                      </div>
-                                    ) : (
-                                      <div className="flex gap-2">
-                                        <button
-                                          className="px-3 py-1.5 rounded-md bg-emerald-600 text-white text-sm"
-                                          onClick={() => setToolStatus((s) => ({ ...s, [callId]: "confirmed" }))}
-                                          disabled={cart.length === 0}
-                                        >
-                                          Confirm
-                                        </button>
-                                        <button
-                                          className="px-3 py-1.5 rounded-md border text-sm"
-                                          onClick={() => setToolStatus((s) => ({ ...s, [callId]: "canceled" }))}
-                                        >
-                                          Cancel
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
+                                  <CheckoutSummary
+                                    cart={cart}
+                                    live={isNewMsg}
+                                    status={toolStatus[callId]}
+                                    onConfirm={() => setToolStatus((s) => ({ ...s, [callId]: "confirmed" }))}
+                                    onCancel={() => setToolStatus((s) => ({ ...s, [callId]: "canceled" }))}
+                                  />
                                 )}
                                 {part.state === "output-error" && (
                                   <div className="text-sm text-destructive">Error finalizing purchase: {part.errorText}</div>
