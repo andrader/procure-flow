@@ -58,8 +58,43 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+// Content Security Policy (CSP)
+// Note: Keep permissive enough for our SPA and dev tools, but safe defaults.
+// If running behind a platform that injects its own CSP, that platform should be
+// configured to avoid sending an additional stricter CSP that would combine.
+app.use((_req: Request, res: Response, next: NextFunction) => {
+  const csp = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    // Allow our scripts and Vite-built assets; 'unsafe-inline' to avoid blocking small inlines
+    "script-src 'self' 'unsafe-inline'",
+    // Styles from self and inline style attributes used by some UI libs
+    "style-src 'self' 'unsafe-inline'",
+    // Images (including data URLs and blobs) like favicons and inline images
+    "img-src 'self' data: blob: https: http:",
+    // Fonts from self and data URLs
+    "font-src 'self' data:",
+    // XHR/fetch/WebSocket endpoints (API calls, dev tools)
+    "connect-src 'self' https: ws: wss:",
+    // Disallow old plugins
+    "object-src 'none'",
+    // Prevent clickjacking by default
+    "frame-ancestors 'self'",
+    // Forms only back to self
+    "form-action 'self'",
+  ].join('; ');
+  res.setHeader('Content-Security-Policy', csp);
+  next();
+});
+
 // Serve static files from the client/dist directory
 app.use(express.static(path.join(__dirname, "../../client/dist")));
+
+
+app.get("/", (req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, "../../client/dist", "index.html"));
+});
+
 
 // Health
 app.get("/api/health", (req: Request, res: Response) => {
@@ -150,10 +185,6 @@ app.get("/api/chat/:id", async (req: Request, res: Response) => {
   }
 });
 
-// For SPA routing (fallback for non-API routes)
-app.get("/", (req: Request, res: Response) => {
-  res.sendFile(path.join(__dirname, "../../client/dist", "index.html"));
-});
 
 app.listen(PORT, () => {
   // eslint-disable-next-line no-console
