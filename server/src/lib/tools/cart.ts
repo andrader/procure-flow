@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { products } from "../data.js";
+import { products } from "../../data.js";
 
 // add_to_cart tool
 export const addToCart = tool({

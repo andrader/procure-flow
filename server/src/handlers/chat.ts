@@ -3,13 +3,13 @@ import { convertToModelMessages, streamText, stepCountIs, type UIMessage } from 
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 
-import { searchProducts, registerProduct } from "../tools/search-and-registry.js";
-import { addToCart, removeFromCart, viewCart } from "../tools/cart.js";
+import { searchProducts, registerProduct } from "../lib/tools/search-and-registry.js";
+import { addToCart, removeFromCart, viewCart } from "../lib/tools/cart.js";
 import { 
     addPaymentMethod, changePaymentMethod, removePaymentMethod,
     addShippingAddress, changeShippingAddress, removeShippingAddress,
     finalizePurchase
-} from "../tools/checkout.js";
+} from "../lib/tools/checkout.js";
 import { loadChat, saveChat } from "../lib/chat-store.js";
 
 // Express handler for the AI chat endpoint

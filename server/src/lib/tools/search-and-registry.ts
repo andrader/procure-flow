@@ -1,8 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { addProduct, products } from "../data.js";
+import { addProduct, products } from "../../data.js";
 import type { Product } from "@shared/types/product";
-import { filterProductsByQuery } from "../lib/search.js";
+import { filterProductsByQuery } from "../../lib/search.js";
 
 // search_items function
 export const searchProducts = tool({
