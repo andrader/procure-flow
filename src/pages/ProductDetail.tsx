@@ -1,7 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { ArrowLeft, ShoppingCart } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -137,11 +136,7 @@ export default function ProductDetail() {
 
           {/* Product Info */}
           <div className="space-y-6">
-            <div>
-              <Badge className="mb-3">{product.status}</Badge>
-              <h1 className="text-3xl md:text-4xl font-bold mb-2">{product.name}</h1>
-              <p className="text-muted-foreground">{product.category}</p>
-            </div>
+            
 
             <div className="text-3xl md:text-4xl font-bold text-primary">
               ${product.price.toFixed(2)}

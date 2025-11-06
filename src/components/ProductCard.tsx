@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { ShoppingCart, ExternalLink, Minus, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -61,9 +60,6 @@ export function ProductCard({ product }: ProductCardProps) {
               </>
             )}
           </Carousel>
-          <Badge className="absolute top-3 left-3 bg-background/90 backdrop-blur-sm">
-            {product.status}
-          </Badge>
         </div>
 
         {/* Product Info */}
