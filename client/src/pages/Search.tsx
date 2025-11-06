@@ -16,18 +16,9 @@ import { useCart } from "@/contexts/CartContext";
 import { Sparkles } from "lucide-react";
 import { FloatingPrompt } from "@/components/FloatingPrompt";
 import { ChatWindow } from "@/components/ChatWindow";
+import type { Product } from "@shared/types/product";
 
 const API_BASE = (import.meta?.env?.VITE_API_BASE as string) ?? "http://localhost:4000";
-
-export type Product = {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  price: number;
-  status: string;
-  images: string[];
-};
 
 const PAGE_SIZE = 12;
 

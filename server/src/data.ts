@@ -1,26 +1,6 @@
 // Mocked data served by the Express backend
-
-export interface Product {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  price: number;
-  status: string;
-  images: string[];
-}
-
-export interface Conversation {
-  id: string;
-  title: string;
-  snippet: string;
-  updatedAt: string;
-}
-
-export interface Conversations {
-  recent: Conversation[];
-  older: Conversation[];
-}
+import type { Product } from "@shared/types/product";
+import type { Conversation, Conversations } from "@shared/types/conversation";
 
 export const products: Product[] = [
   {

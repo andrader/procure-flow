@@ -4,46 +4,58 @@
 
 ProcureFlow is an AI-powered procurement platform for enterprise materials and services management.
 
-## How can I edit this code?
+## Monorepo layout
 
-There are several ways of editing your application.
+This repo is now split into client, server, and shared types:
 
-**Use your preferred IDE**
+- `client/` – Vite + React app
+- `server/` – Express API and static file server
+- `shared/types/` – reusable TypeScript types (e.g. `Product`)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes.
+## Requirements
 
-The only requirement is having Node.js & bun installed
+- Node.js (LTS)
+- Bun (latest)
 
+## Install
 
-Follow these steps:
+Install dependencies for client and server separately:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Client
+cd client
+bun install
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-bun i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-bun run dev
+# Server
+cd ../server
+bun install
 ```
 
-**Edit a file directly in GitHub**
+## Develop
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Run client and server in separate terminals:
 
-**Use GitHub Codespaces**
+```sh
+# Terminal 1 – client
+cd client
+bun run dev
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Terminal 2 – server
+cd server
+bun run ts-node src/index.ts
+```
+
+Optionally, to serve the built client from the server, first build the client:
+
+```sh
+cd client
+bun run build
+
+cd ../server
+bun run build:all
+```
+
+The server serves static files from `client/dist`.
 
 ## What technologies are used for this project?
 
@@ -54,7 +66,15 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- Express (server)
 
-## How can I deploy this project?
+## Deploy
 
-Build the project using `bun run build` and deploy the generated files to your preferred hosting service.
+Build the client and the server:
+
+```sh
+cd client && bun run build
+cd ../server && bun run build
+```
+
+Then deploy the server output and `client/dist` as needed for your platform.

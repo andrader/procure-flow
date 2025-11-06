@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "build": "tsc --build",
-    "build:frontend": "cd ../ && bun run build && cd server",
+    "build:frontend": "cd ../client && bun run build",
     "build:all": "bun run build:frontend && bun run build"
   },
   "devDependencies": {

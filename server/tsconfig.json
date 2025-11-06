@@ -44,6 +44,12 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     
+    // Resolve shared types
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["../shared/*"]
+    }
+    
   },
   "include": ["src/**/*.ts"],
 }

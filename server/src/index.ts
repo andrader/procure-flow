@@ -56,8 +56,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Serve static files from the dist/ directory
-app.use(express.static(path.join(__dirname, "../../dist")));
+// Serve static files from the client/dist directory
+app.use(express.static(path.join(__dirname, "../../client/dist")));
 
 // Health
 app.get("/api/health", (req: Request, res: Response) => {
@@ -147,7 +147,7 @@ app.get("/api/chat/:id", async (req: Request, res: Response) => {
 
 // For SPA routing (fallback for non-API routes)
 app.get("/", (req: Request, res: Response) => {
-  res.sendFile(path.join(__dirname, "../../dist", "index.html"));
+  res.sendFile(path.join(__dirname, "../../client/dist", "index.html"));
 });
 
 app.listen(PORT, () => {
