@@ -9,11 +9,10 @@
     "postinstall": "echo Workspaces: client, server",
     "dev": "bun run dev:client & bun run dev:server",
     "dev:client": "bun --cwd=client run dev",
-    "dev:server": "bun --cwd=server run ts-node src/index.ts",
+    "dev:server": "bun --cwd=server run dev",
     "build": "bun run build:client && bun run build:server",
     "build:client": "bun --cwd=client run build",
     "build:server": "bun --cwd=server run build",
-    "build:all": "bun --cwd=server run build:all",
     "lint": "bun --cwd=client run lint",
     "preview": "bun --cwd=client run preview"
   }

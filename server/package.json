@@ -4,9 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "tsc --build",
-    "build:frontend": "cd ../client && bun run build",
-    "build:all": "bun run build:frontend && bun run build"
+    "dev": "bun --watch src/index.ts",
+    "build": "tsc --build"
   },
   "devDependencies": {
     "@types/bun": "latest",
