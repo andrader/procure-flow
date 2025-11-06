@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { convertToModelMessages, streamText, stepCountIs } from "ai";
+import { convertToModelMessages, streamText, stepCountIs, type UIMessage } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 
@@ -10,13 +10,32 @@ import {
     addShippingAddress, changeShippingAddress, removeShippingAddress,
     finalizePurchase
 } from "../tools/checkout.js";
+import { loadChat, saveChat } from "../lib/chat-store.js";
 
 // Express handler for the AI chat endpoint
 export const handleChat = async (req: Request, res: Response) => {
     // eslint-disable-next-line no-console
     console.log("Received /api/chat request");
     try {
-        const { messages = [] } = req.body || {};
+        const { messages: incomingMessages = [], message, id } = req.body || {} as {
+            messages?: UIMessage[];
+            message?: UIMessage;
+            id?: string;
+        };
+
+        // If a single new message and chat id are provided, load previous messages
+        let workingMessages: UIMessage[] = [];
+        let chatId: string | undefined = id;
+        if (message && typeof id === "string") {
+            try {
+                const previous = await loadChat(id);
+                workingMessages = [...previous, message];
+            } catch {
+                workingMessages = [message];
+            }
+        } else {
+            workingMessages = incomingMessages as UIMessage[];
+        }
 
         // Optional: quick config guard
         if (!process.env.OPENAI_API_KEY) {
@@ -32,10 +51,10 @@ When users ask about products:
 2. When the user asks to add an item (optionally with a quantity), call the addToCart tool with the most relevant productId and quantity (default 1). Prefer product IDs from the latest search results if available.
 3. Be concise. You may briefly confirm actions and suggest next steps like viewing the cart or checking out.
 `,
-            messages: convertToModelMessages(messages),
+            messages: convertToModelMessages(workingMessages),
             // Enable multi-step tool calling
             stopWhen: stepCountIs(20),
-            tools: {
+            tools: ({
                 // search and register products tools
                 searchProducts: searchProducts,
                 registerProduct: registerProduct,
@@ -52,11 +71,21 @@ When users ask about products:
                 removeShippingAddress: removeShippingAddress,
                 // finalize purchase tool
                 finalizePurchase: finalizePurchase,
-            },
+            } as any),
         });
 
+        // Persist on completion (even if client disconnects)
+        result.consumeStream();
+
         // Convert to Response object and pipe to Express response
-        const response = result.toUIMessageStreamResponse();
+        const response = result.toUIMessageStreamResponse({
+            originalMessages: workingMessages,
+            onFinish: ({ messages }) => {
+                if (chatId) {
+                    saveChat({ chatId, messages });
+                }
+            },
+        });
 
         // Copy headers from the Response to Express response
         response.headers.forEach((value, key) => {

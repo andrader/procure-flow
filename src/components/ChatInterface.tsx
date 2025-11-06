@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type FC } from "react";
+import { useNavigate } from "react-router-dom";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { Button } from "@/components/ui/button";
@@ -51,7 +52,18 @@ function AutoScroll({ messages }: { messages: UIMessage[] }) {
   return null;
 }
 
-function ChatContent() {
+interface ChatInterfaceProps {
+  /** Optional chat id for persistence */
+  id?: string;
+  /** Optional initial messages to hydrate the chat */
+  initialMessages?: UIMessage[];
+}
+
+function ChatContent({ id, initialMessages }: ChatInterfaceProps) {
+  const navigate = useNavigate();
+  const [activeId, setActiveId] = useState<string | undefined>(id);
+  const [queuedText, setQueuedText] = useState<string | null>(null);
+  const [queuedFiles, setQueuedFiles] = useState<NonNullable<PromptInputMessage["files"]> | undefined>(undefined);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { textInput } = usePromptInputController();
   const { cart, open: openCart, totalCount, addToCart } = useCart();
@@ -61,10 +73,27 @@ function ChatContent() {
 
   // AI chat hook with proper streaming configuration
   const { messages, sendMessage, status, setMessages } = useChat({
+    id: activeId,
+    messages: initialMessages,
     transport: new DefaultChatTransport({
       api: `${API_BASE}/api/chat`,
+      // Only send the last message and the chat id for persistence
+      prepareSendMessagesRequest({ messages, id }) {
+        return { body: { message: messages[messages.length - 1], id } };
+      },
     }),
   });
+
+  // If we created a chat id just-in-time, send the queued message after id becomes available
+  useEffect(() => {
+    if (activeId && queuedText !== null) {
+      sendMessage({ text: queuedText, files: queuedFiles });
+      setQueuedText(null);
+      setQueuedFiles(undefined);
+      // Clear input
+      textInput.setInput("");
+    }
+  }, [activeId, queuedText, queuedFiles, sendMessage, textInput]);
 
   const handleSubmit = async (
     message: PromptInputMessage,
@@ -72,10 +101,25 @@ function ChatContent() {
   ) => {
     if (!message.text?.trim() && (!message.files || message.files.length === 0)) return;
 
+    // If we don't have a chat id yet, create it, navigate, and queue the message
+    if (!activeId) {
+      try {
+        const res = await fetch(`${API_BASE}/api/chat/create`, { method: "POST" });
+        const data = await res.json();
+        if (data.id) {
+          setActiveId(data.id);
+          navigate(`/chat/${data.id}`);
+          setQueuedText(message.text ?? "");
+          setQueuedFiles(message.files);
+          return;
+        }
+      } catch (err) {
+        console.error("[ChatInterface] Failed to create chat id", err);
+      }
+    }
+
     // Send message to AI - useChat will handle adding it to messages automatically
-    // The AI will use the searchProducts tool when appropriate
     sendMessage({ text: message.text ?? "", files: message.files });
-    
     // Clear the input immediately after submitting
     textInput.setInput("");
   };
@@ -629,10 +673,10 @@ function ChatContent() {
   );
 }
 
-export function ChatInterface() {
+export const ChatInterface: FC<ChatInterfaceProps> = (props) => {
   return (
     <PromptInputProvider>
-      <ChatContent />
+      <ChatContent {...props} />
     </PromptInputProvider>
   );
-}
+};

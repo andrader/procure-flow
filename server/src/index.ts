@@ -2,6 +2,7 @@ import express, { type Request, type Response, type NextFunction } from "express
 import { products, conversations, addProduct, type Product } from "./data.js";
 import { filterProductsByQuery } from "./lib/search.js";
 import { handleChat } from "./handlers/chat.js";
+import { createChat, loadChat } from "./lib/chat-store.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -121,6 +122,28 @@ app.post("/api/checkout", (req: Request, res: Response) => {
 
 // AI chat endpoint - streams UI messages compatible with @ai-sdk/react useChat
 app.post("/api/chat", handleChat);
+
+// Create a new chat and return its id
+app.post("/api/chat/create", async (_req: Request, res: Response) => {
+  try {
+    const id = await createChat();
+    res.json({ id });
+  } catch (e) {
+    console.error("/api/chat/create error", e);
+    res.status(500).json({ error: "failed-to-create" });
+  }
+});
+
+// Load chat history by id
+app.get("/api/chat/:id", async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id as string;
+    const messages = await loadChat(id);
+    res.json({ messages });
+  } catch (e) {
+    res.status(404).json({ messages: [] });
+  }
+});
 
 // For SPA routing (fallback for non-API routes)
 app.get("/", (req: Request, res: Response) => {
