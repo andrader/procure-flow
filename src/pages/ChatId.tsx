@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { ChatInterface } from "@/components/ChatInterface";
 import { Header } from "@/components/Header";
 import type { UIMessage } from "ai";
@@ -9,6 +9,8 @@ const API_BASE = (import.meta?.env?.VITE_API_BASE as string) ?? "http://localhos
 const ChatIdPage = () => {
   const { id } = useParams();
   const [initial, setInitial] = useState<UIMessage[] | null>(null);
+  const location = useLocation() as { pathname: string; state?: { initialSubmit?: { text?: string; files?: any } } } as any;
+  const navigate = useNavigate();
 
   useEffect(() => {
     let active = true;
@@ -34,7 +36,7 @@ const ChatIdPage = () => {
     <div className="h-screen bg-background overflow-hidden flex flex-col">
       <Header />
       <div className="flex-1 min-h-0">
-        <ChatInterface id={id} initialMessages={initial} />
+  <ChatInterface id={id} initialMessages={initial} initialSubmit={location.state?.initialSubmit} />
       </div>
     </div>
   );

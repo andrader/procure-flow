@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type FC } from "react";
+import { useState, useRef, useEffect, type FC, useRef as useReactRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
@@ -57,23 +57,23 @@ interface ChatInterfaceProps {
   id?: string;
   /** Optional initial messages to hydrate the chat */
   initialMessages?: UIMessage[];
+  /** Optional message to auto-send on mount (used when navigating from /chat to /chat/:id) */
+  initialSubmit?: PromptInputMessage;
 }
 
-function ChatContent({ id, initialMessages }: ChatInterfaceProps) {
+function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps) {
   const navigate = useNavigate();
-  const [activeId, setActiveId] = useState<string | undefined>(id);
-  const [queuedText, setQueuedText] = useState<string | null>(null);
-  const [queuedFiles, setQueuedFiles] = useState<NonNullable<PromptInputMessage["files"]> | undefined>(undefined);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { textInput } = usePromptInputController();
   const { cart, open: openCart, totalCount, addToCart } = useCart();
   const [registerOpen, setRegisterOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const processedToolCalls = useRef<Set<string>>(new Set());
+  const sentInitialRef = useReactRef(false);
 
   // AI chat hook with proper streaming configuration
   const { messages, sendMessage, status, setMessages } = useChat({
-    id: activeId,
+    id,
     messages: initialMessages,
     transport: new DefaultChatTransport({
       api: `${API_BASE}/api/chat`,
@@ -84,16 +84,14 @@ function ChatContent({ id, initialMessages }: ChatInterfaceProps) {
     }),
   });
 
-  // If we created a chat id just-in-time, send the queued message after id becomes available
+  // If an initialSubmit was provided (from navigation), send it once on mount
   useEffect(() => {
-    if (activeId && queuedText !== null) {
-      sendMessage({ text: queuedText, files: queuedFiles });
-      setQueuedText(null);
-      setQueuedFiles(undefined);
-      // Clear input
+    if (initialSubmit && !sentInitialRef.current) {
+      sentInitialRef.current = true;
+      sendMessage({ text: initialSubmit.text ?? "", files: initialSubmit.files });
       textInput.setInput("");
     }
-  }, [activeId, queuedText, queuedFiles, sendMessage, textInput]);
+  }, [initialSubmit, sendMessage, textInput, sentInitialRef]);
 
   const handleSubmit = async (
     message: PromptInputMessage,
@@ -101,16 +99,13 @@ function ChatContent({ id, initialMessages }: ChatInterfaceProps) {
   ) => {
     if (!message.text?.trim() && (!message.files || message.files.length === 0)) return;
 
-    // If we don't have a chat id yet, create it, navigate, and queue the message
-    if (!activeId) {
+    // If we don't have a chat id yet, create it and navigate carrying the pending message in state
+    if (!id) {
       try {
         const res = await fetch(`${API_BASE}/api/chat/create`, { method: "POST" });
         const data = await res.json();
         if (data.id) {
-          setActiveId(data.id);
-          navigate(`/chat/${data.id}`);
-          setQueuedText(message.text ?? "");
-          setQueuedFiles(message.files);
+          navigate(`/chat/${data.id}`, { state: { initialSubmit: { text: message.text ?? "", files: message.files } } });
           return;
         }
       } catch (err) {
