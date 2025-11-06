@@ -70,6 +70,10 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const processedToolCalls = useRef<Set<string>>(new Set());
   const sentInitialRef = useReactRef(false);
+  // Track which message IDs we've already rendered to prevent re-running side effects on reload
+  const seenMessageIds = useRef<Set<string>>(new Set((initialMessages ?? []).map((m) => m.id)));
+  // Track user confirmation state for finalize cards
+  const [toolStatus, setToolStatus] = useState<Record<string, "confirmed" | "canceled" | undefined>>({});
 
   // AI chat hook with proper streaming configuration
   const { messages, sendMessage, status, setMessages } = useChat({
@@ -92,6 +96,13 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
       textInput.setInput("");
     }
   }, [initialSubmit, sendMessage, textInput, sentInitialRef]);
+
+  // After each messages update, mark them seen
+  useEffect(() => {
+    for (const m of messages) {
+      seenMessageIds.current.add(m.id);
+    }
+  }, [messages]);
 
   const handleSubmit = async (
     message: PromptInputMessage,
@@ -154,7 +165,9 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
             <AutoScroll messages={messages} />
             <ConversationContent>
               <div className="w-full px-4 md:px-6 space-y-6">
-                {messages.map((message) => (
+                {messages.map((message) => {
+                  const isNewMsg = !seenMessageIds.current.has(message.id);
+                  return (
                   <div
                     key={message.id}
                     className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
@@ -271,11 +284,12 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                                       | { success: true; message: string; quantity: number; product: Product }
                                       | { success: false; message: string };
 
-                                    // Side-effect: add to cart once (avoid duplicates in StrictMode)
+                                    // Side-effect: add to cart once for newly streamed messages only
                                     if (
                                       output &&
                                       (output as any).success === true &&
-                                      !processedToolCalls.current.has(callId)
+                                      !processedToolCalls.current.has(callId) &&
+                                      isNewMsg
                                     ) {
                                       try {
                                         const ok = output as { success: true; quantity: number; product: Product };
@@ -335,13 +349,36 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                                 const callId = part.toolCallId;
                                 switch (part.state) {
                                   case "output-available": {
-                                    if (!processedToolCalls.current.has(callId)) {
-                                      processedToolCalls.current.add(callId);
-                                      openCart();
-                                    }
+                                    const stale = !isNewMsg;
                                     return (
-                                      <div key={callId} className="text-sm text-muted-foreground italic">
-                                        Opening cart...
+                                      <div key={callId} className="w-full">
+                                        <div className="max-w-2xl rounded-2xl px-4 py-3 border bg-background">
+                                          <div className="flex items-center justify-between mb-2">
+                                            <div className="font-medium">Cart</div>
+                                            {!stale ? (
+                                              <span className="text-xs text-emerald-600">Live snapshot</span>
+                                            ) : (
+                                              <span className="text-xs text-amber-600">Stale view</span>
+                                            )}
+                                          </div>
+                                          {cart.length === 0 ? (
+                                            <div className="text-sm text-muted-foreground">Your cart is empty.</div>
+                                          ) : (
+                                            <div className="space-y-2">
+                                              {cart.map((ci) => (
+                                                <div key={ci.product.id} className="flex items-center justify-between text-sm">
+                                                  <div className="truncate mr-2">{ci.product.name}</div>
+                                                  <div className="tabular-nums">× {ci.quantity}</div>
+                                                  <div className="tabular-nums ml-4">${(ci.product.price * ci.quantity).toFixed(2)}</div>
+                                                </div>
+                                              ))}
+                                              <div className="border-t pt-2 flex items-center justify-between text-sm font-medium">
+                                                <div>Total</div>
+                                                <div className="tabular-nums">${cart.reduce((s, ci) => s + ci.product.price * ci.quantity, 0).toFixed(2)}</div>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
                                       </div>
                                     );
                                   }
@@ -473,14 +510,64 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                                       </div>
                                     );
                                   case "output-available": {
-                                    const output = part.output as { success: boolean; message: string };
-                                    if (!processedToolCalls.current.has(callId)) {
-                                      processedToolCalls.current.add(callId);
-                                      setCheckoutOpen(true);
-                                    }
+                                    const stale = !isNewMsg;
+                                    const status = toolStatus[callId];
+                                    const total = cart.reduce((s, ci) => s + ci.product.price * ci.quantity, 0);
                                     return (
-                                      <div key={callId} className="text-sm">
-                                        {output.message}
+                                      <div key={callId} className="w-full">
+                                        <div className="max-w-2xl rounded-2xl px-4 py-3 border bg-background space-y-3">
+                                          <div className="flex items-center justify-between">
+                                            <div className="font-medium">Checkout Summary</div>
+                                            {!stale ? (
+                                              <span className="text-xs text-emerald-600">Live snapshot</span>
+                                            ) : (
+                                              <span className="text-xs text-amber-600">Stale view</span>
+                                            )}
+                                          </div>
+                                          <div className="space-y-1 text-sm">
+                                            {cart.length === 0 ? (
+                                              <div className="text-muted-foreground">Your cart is empty.</div>
+                                            ) : (
+                                              cart.map((ci) => (
+                                                <div key={ci.product.id} className="flex items-center justify-between">
+                                                  <div className="truncate mr-2">{ci.product.name} × {ci.quantity}</div>
+                                                  <div className="tabular-nums">${(ci.product.price * ci.quantity).toFixed(2)}</div>
+                                                </div>
+                                              ))
+                                            )}
+                                            <div className="border-t pt-2 flex items-center justify-between font-medium">
+                                              <div>Total</div>
+                                              <div className="tabular-nums">${total.toFixed(2)}</div>
+                                            </div>
+                                          </div>
+                                          <div className="text-sm">
+                                            <div className="mb-1 font-medium">Shipping Address</div>
+                                            <div className="text-muted-foreground">John Doe, 123 Main St, Springfield, USA</div>
+                                          </div>
+                                          <div className="text-sm">
+                                            <div className="mb-1 font-medium">Payment Method</div>
+                                            <div className="text-muted-foreground">Visa •••• 4242</div>
+                                          </div>
+                                          {status ? (
+                                            <div className={`text-sm ${status === "confirmed" ? "text-emerald-600" : "text-amber-600"}`}>{status === "confirmed" ? "Order confirmed." : "Order canceled."}</div>
+                                          ) : (
+                                            <div className="flex gap-2">
+                                              <button
+                                                className="px-3 py-1.5 rounded-md bg-emerald-600 text-white text-sm"
+                                                onClick={() => setToolStatus((s) => ({ ...s, [callId]: "confirmed" }))}
+                                                disabled={cart.length === 0}
+                                              >
+                                                Confirm
+                                              </button>
+                                              <button
+                                                className="px-3 py-1.5 rounded-md border text-sm"
+                                                onClick={() => setToolStatus((s) => ({ ...s, [callId]: "canceled" }))}
+                                              >
+                                                Cancel
+                                              </button>
+                                            </div>
+                                          )}
+                                        </div>
                                       </div>
                                     );
                                   }
@@ -502,7 +589,8 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                       </div>
                     )}
                   </div>
-                ))}
+                );
+                })}
                 {(status === "streaming" || status === "submitted") && (
                   <div className="flex justify-start">
                     <div className="max-w-2xl rounded-2xl px-4 py-3 bg-muted">
