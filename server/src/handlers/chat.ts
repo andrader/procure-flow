@@ -29,6 +29,47 @@ export const handleChat = async (req: Request, res: Response) => {
         if (message && typeof id === "string") {
             try {
                 const previous = await loadChat(id);
+
+                // De-dup guard: if this exact user message already exists in history and has been
+                // followed by an assistant reply, do NOT generate a new response. This prevents
+                // new assistant messages from being created on page reloads.
+                const existingIndex = previous.findIndex((m: UIMessage) => m.id === message.id);
+                if (existingIndex !== -1) {
+                    const hasAssistantAfter = previous
+                        .slice(existingIndex + 1)
+                        .some((m: UIMessage) => m.role === "assistant");
+                    if (hasAssistantAfter) {
+                        // No-op: respond with no content to indicate nothing to stream.
+                        return res.status(204).end();
+                    }
+                }
+
+                // Additional de-dup: if a prior identical user message (same text) already
+                // received an assistant reply, skip regenerating on reload where the client
+                // might have a new transient message id.
+                const norm = (t?: string) => (t ?? "").trim();
+                const msgText = norm(
+                    message.parts?.find?.((p: any) => p?.type === "text")?.text ?? (message as any).content ?? ""
+                );
+                if (msgText) {
+                    for (let i = 0; i < previous.length; i++) {
+                        const pm = previous[i] as UIMessage;
+                        if (pm.role === "user") {
+                            const prevText = norm(
+                                (pm as any).parts?.find?.((p: any) => p?.type === "text")?.text ?? (pm as any).content ?? ""
+                            );
+                            if (prevText && prevText === msgText) {
+                                const hasAssistantAfterSame = previous
+                                    .slice(i + 1)
+                                    .some((m: UIMessage) => m.role === "assistant");
+                                if (hasAssistantAfterSame) {
+                                    return res.status(204).end();
+                                }
+                            }
+                        }
+                    }
+                }
+
                 workingMessages = [...previous, message];
             } catch {
                 workingMessages = [message];

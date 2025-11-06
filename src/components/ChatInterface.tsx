@@ -91,11 +91,17 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
   // If an initialSubmit was provided (from navigation), send it once on mount
   useEffect(() => {
     if (initialSubmit && !sentInitialRef.current) {
-      sentInitialRef.current = true;
-      sendMessage({ text: initialSubmit.text ?? "", files: initialSubmit.files });
-      textInput.setInput("");
+      // If we have a chat id, prevent re-sending the same initialSubmit across reloads
+      const key = id ? `pf:init:${id}` : undefined;
+      const payload = JSON.stringify({ t: initialSubmit.text ?? "", f: (initialSubmit.files ?? []).length });
+      if (!key || sessionStorage.getItem(key) !== payload) {
+        sentInitialRef.current = true;
+        sendMessage({ text: initialSubmit.text ?? "", files: initialSubmit.files });
+        textInput.setInput("");
+        if (key) sessionStorage.setItem(key, payload);
+      }
     }
-  }, [initialSubmit, sendMessage, textInput, sentInitialRef]);
+  }, [id, initialSubmit, sendMessage, textInput, sentInitialRef]);
 
   // After each messages update, mark them seen
   useEffect(() => {
