@@ -1,15 +1,17 @@
-import { ChatInterface } from "@/components/ChatInterface";
-import { Header } from "@/components/Header";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const ChatPage = () => {
-  return (
-    <div className="h-screen bg-background overflow-hidden flex flex-col">
-      <Header />
-      <div className="flex-1 min-h-0">
-        <ChatInterface />
-      </div>
-    </div>
-  );
+  const navigate = useNavigate();
+  useEffect(() => {
+    async function startChat() {
+      const res = await fetch("/api/chat?create=1", { method: "POST" });
+      const data = await res.json();
+      if (data.id) navigate(`/chat/${data.id}`);
+    }
+    startChat();
+  }, [navigate]);
+  return null;
 };
 
 export default ChatPage;
