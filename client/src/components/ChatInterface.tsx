@@ -414,20 +414,7 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                     </Message>
                   );
                 })}
-                {(status === "streaming" || status === "submitted") && (
-                  <div className="flex justify-start">
-                    <div className="max-w-2xl rounded-2xl px-4 py-3 bg-muted">
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-1">
-                          <span className="w-2 h-2 bg-foreground/60 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                          <span className="w-2 h-2 bg-foreground/60 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                          <span className="w-2 h-2 bg-foreground/60 rounded-full animate-bounce"></span>
-                        </div>
-                        <span className="text-sm text-muted-foreground">Thinking...</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                
               </div>
             </ConversationContent>
             <ConversationScrollButton />
