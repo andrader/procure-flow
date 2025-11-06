@@ -21,7 +21,9 @@ async function main() {
     // Not fatal; we still create the shim so Vercel finds an entry file.
   }
 
-  const contents = "import './server/src/index.js';\n";
+  // Include an explicit express import so platforms that statically analyze
+  // the entrypoint (like Vercel) detect an Express server.
+  const contents = "import 'express';\nimport './server/src/index.js';\n";
   await writeFile(topLevelEntry, contents, 'utf8');
   console.log(`[postbuild] Wrote entrypoint: ${path.relative(process.cwd(), topLevelEntry)}`);
 }
