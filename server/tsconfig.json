@@ -5,7 +5,7 @@
   "module": "ESNext",
     "target": "esnext",
   "outDir": "./dist", // Output directory for compiled JavaScript
-  "rootDir": "../", // Include server and shared so type-only imports from shared don't error
+  "rootDirs": ["./src/", "./shared/"], // Root directories for module resolution
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
@@ -46,11 +46,11 @@
   "moduleResolution": "bundler",
     
     // Resolve shared types
-    "baseUrl": ".",
+    "baseUrl": "./",
     "paths": {
       "@shared/*": ["../shared/*"]
     }
     
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts"],
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "shared/**/*.ts"],
 }

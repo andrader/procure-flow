@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "bun --watch src/index.ts",
-    "build": "tsc --build"
+    "build": "tsc --build",
+    "postbuild": "node ./scripts/create-dist-entry.mjs"
   },
   "devDependencies": {
     "@types/bun": "latest",
