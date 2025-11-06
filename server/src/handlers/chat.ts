@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
-import { convertToModelMessages, streamText, stepCountIs, type UIMessage } from "ai";
+import { convertToModelMessages, streamText, stepCountIs, type UIMessage, type StopCondition, TypeValidationError } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { validateUIMessages } from 'ai';
 import { z } from "zod";
 
 import { searchProducts, registerProduct } from "../lib/tools/search-and-registry.js";
@@ -12,119 +13,130 @@ import {
 } from "../lib/tools/checkout.js";
 import { loadChat, saveChat } from "../lib/chat-store.js";
 
+interface AgentOptions {
+    model: any;
+    system: string;
+    stopWhen?: StopCondition<any>;
+    tools: Record<string, any>;
+    // allow additional options
+    [key: string]: any;
+}
+
+// Main procurement assistant agent
+const MainAgent: AgentOptions = {
+    model: openai("gpt-5-nano"),
+    system: `You are ProcureFlow's helpful assistant. You help users find and purchase products in the procurement catalog.
+    When users ask about products:
+    1. Use the searchProducts tool to search the catalog. Do not list items yourself — let the UI render results.
+    2. When the user asks to add an item (optionally with a quantity), call the addToCart tool with the most relevant productId and quantity (default 1). Prefer product IDs from the latest search results if available.
+    3. Be concise. You may briefly confirm actions and suggest next steps like viewing the cart or checking out.
+    
+    Rules:
+    - Never make up product names, IDs, prices, or details. 
+    - Always use the searchProducts tool to find accurate information.
+    - After calling a tool, don't summarize the cart, product list, or checkout. The UI will handle displaying that information.
+    - If the user asks for something outside procurement, politely inform them that you can only assist with procurement-related queries.
+    `,
+    // Enable multi-step tool calling
+    stopWhen: stepCountIs(20),
+    tools: ({
+        // search and register products tools
+        searchProducts: searchProducts,
+        registerProduct: registerProduct,
+        // cart tools
+        addToCart: addToCart,
+        removeFromCart: removeFromCart,
+        viewCart: viewCart,
+        // finalize purchase tool
+        finalizePurchase: finalizePurchase,
+    }),
+};
+
+
+// update user address, payment methods etc
+const UserRegistrationAgent: AgentOptions = {
+  model: 'openai/gpt-5-nano',
+  system: `You are ProcureFlow's user account assistant. You help users manage their payment methods and shipping addresses.
+  When users ask about updating their account:
+  1. Use the appropriate tools to add, change, or remove payment methods and shipping addresses.
+  2. Be concise. Briefly confirm actions taken.
+
+  Rules:
+  - Never make up payment method or address details.
+  - Always use the provided tools to manage user information.
+  `,
+  stopWhen: stepCountIs(10),
+  tools: {
+    addPaymentMethod: addPaymentMethod,
+    changePaymentMethod: changePaymentMethod,
+    removePaymentMethod: removePaymentMethod,
+    addShippingAddress: addShippingAddress,
+    changeShippingAddress: changeShippingAddress,
+    removeShippingAddress: removeShippingAddress,
+    
+  },
+};
+
+
 // Express handler for the AI chat endpoint
 export const handleChat = async (req: Request, res: Response) => {
     // eslint-disable-next-line no-console
     console.log("Received /api/chat request");
     try {
-        const { messages: incomingMessages = [], message, id } = req.body || {} as {
-            messages?: UIMessage[];
-            message?: UIMessage;
-            id?: string;
-        };
-
-        // If a single new message and chat id are provided, load previous messages
-        let workingMessages: UIMessage[] = [];
-        let chatId: string | undefined = id;
-        if (message && typeof id === "string") {
-            try {
-                const previous = await loadChat(id);
-
-                // De-dup guard: if this exact user message already exists in history and has been
-                // followed by an assistant reply, do NOT generate a new response. This prevents
-                // new assistant messages from being created on page reloads.
-                const existingIndex = previous.findIndex((m: UIMessage) => m.id === message.id);
-                if (existingIndex !== -1) {
-                    const hasAssistantAfter = previous
-                        .slice(existingIndex + 1)
-                        .some((m: UIMessage) => m.role === "assistant");
-                    if (hasAssistantAfter) {
-                        // No-op: respond with no content to indicate nothing to stream.
-                        return res.status(204).end();
-                    }
-                }
-
-                // Additional de-dup: if a prior identical user message (same text) already
-                // received an assistant reply, skip regenerating on reload where the client
-                // might have a new transient message id.
-                const norm = (t?: string) => (t ?? "").trim();
-                const msgText = norm(
-                    message.parts?.find?.((p: any) => p?.type === "text")?.text ?? (message as any).content ?? ""
-                );
-                if (msgText) {
-                    for (let i = 0; i < previous.length; i++) {
-                        const pm = previous[i] as UIMessage;
-                        if (pm.role === "user") {
-                            const prevText = norm(
-                                (pm as any).parts?.find?.((p: any) => p?.type === "text")?.text ?? (pm as any).content ?? ""
-                            );
-                            if (prevText && prevText === msgText) {
-                                const hasAssistantAfterSame = previous
-                                    .slice(i + 1)
-                                    .some((m: UIMessage) => m.role === "assistant");
-                                if (hasAssistantAfterSame) {
-                                    return res.status(204).end();
-                                }
-                            }
-                        }
-                    }
-                }
-
-                workingMessages = [...previous, message];
-            } catch {
-                workingMessages = [message];
-            }
-        } else {
-            workingMessages = incomingMessages as UIMessage[];
-        }
-
         // Optional: quick config guard
         if (!process.env.OPENAI_API_KEY) {
             return res.status(500).json({ error: "Server not configured: missing OPENAI_API_KEY" });
         }
+        
+        // Express exposes the parsed body as req.body (ensure body-parser / express.json() is enabled)
+        const { message, id } = (req.body ?? {}) as { message?: UIMessage; id?: string };
+        if (!message) {
+            return res.status(400).json({ error: "Missing 'message' in request body" });
+        }
+        if (!id) {
+            return res.status(400).json({ error: "Missing 'id' in request body" });
+        }
+
+        // Build working message list and (optional) chat id
+          // Load previous messages from database
+        const previousMessages = await loadChat(id);
+
+        // Append new message to previousMessages messages
+        const messages = [...previousMessages, message];
+        
+        const validatedMessages = [];
+        try {
+            const validatedMessages = await validateUIMessages({
+                messages,
+            });
+        } catch (error) {
+            if (error instanceof TypeValidationError) {
+            // Log validation error for monitoring
+            console.error('Database messages validation failed:', error);
+            // Could implement message migration or filtering here
+            // For now, start with empty history
+            
+            } else {
+                throw error;
+            }
+        }
+                
 
         const result = streamText({
-            model: openai("gpt-5-nano"),
-            system: `You are ProcureFlow's helpful assistant. You help users find and purchase products in the procurement catalog.
-
-When users ask about products:
-1. Use the searchProducts tool to search the catalog. Do not list items yourself — let the UI render results.
-2. When the user asks to add an item (optionally with a quantity), call the addToCart tool with the most relevant productId and quantity (default 1). Prefer product IDs from the latest search results if available.
-3. Be concise. You may briefly confirm actions and suggest next steps like viewing the cart or checking out.
-`,
-            messages: convertToModelMessages(workingMessages),
-            // Enable multi-step tool calling
-            stopWhen: stepCountIs(20),
-            tools: ({
-                // search and register products tools
-                searchProducts: searchProducts,
-                registerProduct: registerProduct,
-                // cart tools
-                addToCart: addToCart,
-                removeFromCart: removeFromCart,
-                viewCart: viewCart,
-                // checkout tools
-                addPaymentMethod: addPaymentMethod,
-                changePaymentMethod: changePaymentMethod,
-                removePaymentMethod: removePaymentMethod,
-                addShippingAddress: addShippingAddress,
-                changeShippingAddress: changeShippingAddress,
-                removeShippingAddress: removeShippingAddress,
-                // finalize purchase tool
-                finalizePurchase: finalizePurchase,
-            } as any),
+            // unpack agent options
+            ...MainAgent,
+            // messages converted to model format
+            messages: convertToModelMessages(
+                messages
+            ),
         });
-
-        // Persist on completion (even if client disconnects)
-        result.consumeStream();
+        
 
         // Convert to Response object and pipe to Express response
         const response = result.toUIMessageStreamResponse({
-            originalMessages: workingMessages,
+            originalMessages: messages,
             onFinish: ({ messages }) => {
-                if (chatId) {
-                    saveChat({ chatId, messages });
-                }
+                saveChat({ chatId: id, messages });
             },
         });
 
