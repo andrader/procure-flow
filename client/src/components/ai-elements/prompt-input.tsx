@@ -999,6 +999,7 @@ export const PromptInputSpeechButton = ({
   onTranscriptionChange,
   ...props
 }: PromptInputSpeechButtonProps) => {
+  const controller = useOptionalPromptInputController();
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -1042,9 +1043,11 @@ export const PromptInputSpeechButton = ({
       const newValue = currentValue ? `${currentValue} ${text}` : text;
       textarea.value = newValue;
       textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      // Ensure controlled state (when using PromptInputProvider) stays in sync
+      controller?.textInput.setInput(newValue);
       onTranscriptionChange?.(newValue);
     },
-    [textareaRef, onTranscriptionChange]
+    [textareaRef, controller, onTranscriptionChange]
   );
 
   const transcribe = useCallback(
