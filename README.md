@@ -17,32 +17,25 @@ This repo is now split into client, server, and shared types:
 - Node.js (LTS)
 - Bun (latest)
 
-## Install
+## Install (Bun workspaces)
 
-Install dependencies for client and server separately:
+From the repo root, install all workspace dependencies at once:
 
 ```sh
-# Client
-cd client
-bun install
-
-# Server
-cd ../server
 bun install
 ```
 
 ## Develop
 
-Run client and server in separate terminals:
+Run both client and server from the root in separate terminals or with one command:
 
 ```sh
-# Terminal 1 – client
-cd client
+# Option A: one command (runs both)
 bun run dev
 
-# Terminal 2 – server
-cd server
-bun run ts-node src/index.ts
+# Option B: separate
+bun run dev:client
+bun run dev:server
 ```
 
 Optionally, to serve the built client from the server, first build the client:
@@ -73,8 +66,7 @@ This project is built with:
 Build the client and the server:
 
 ```sh
-cd client && bun run build
-cd ../server && bun run build
+bun run build
 ```
 
 Then deploy the server output and `client/dist` as needed for your platform.
