@@ -1,19 +1,29 @@
-import { generateId } from "ai";
+import { generateId, type UIMessage } from "ai";
 import { existsSync, mkdirSync } from "fs";
 import { writeFile, readFile } from "fs/promises";
 import path from "path";
 
+/**
+ * Create a new chat and persist an empty message array.
+ * Returns the generated chat id.
+ */
 export async function createChat(): Promise<string> {
   const id = generateId();
   await writeFile(getChatFile(id), "[]");
   return id;
 }
 
-export async function loadChat(id: string) {
-  return JSON.parse(await readFile(getChatFile(id), "utf8"));
+/**
+ * Load all messages for a chat id.
+ */
+export async function loadChat(id: string): Promise<UIMessage[]> {
+  return JSON.parse(await readFile(getChatFile(id), "utf8")) as UIMessage[];
 }
 
-export async function saveChat({ chatId, messages }: { chatId: string; messages: any[] }) {
+/**
+ * Persist all messages for a chat id.
+ */
+export async function saveChat({ chatId, messages }: { chatId: string; messages: UIMessage[] }): Promise<void> {
   const content = JSON.stringify(messages, null, 2);
   await writeFile(getChatFile(chatId), content);
 }
