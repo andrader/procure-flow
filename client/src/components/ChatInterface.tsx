@@ -247,7 +247,10 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                         }
                         case "tool-addToCart": {
                           const callId = part.toolCallId;
-                          if (part.state === "output-available" && !processedToolCalls.current.has(callId) && isNewMsg) {
+                          // Apply cart changes whenever the tool output is available and hasn't been processed yet.
+                          // Do not gate on "isNewMsg" because messages can update incrementally or be hydrated,
+                          // which would prevent this side-effect from running.
+                          if (part.state === "output-available" && !processedToolCalls.current.has(callId)) {
                             const output = part.output as
                               | { success: true; message: string; quantity: number; product: Product }
                               | { success: false; message: string };
