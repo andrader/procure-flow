@@ -153,7 +153,7 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                 {messages.map((message) => {
                   const isNewMsg = !seenMessageIds.current.has(message.id);
                   const inside: ReactNode[] = [];
-                  const outside: ReactNode[] = [];
+                  
 
                   if (message.role === "user") {
                     message.parts.forEach((part, i) => {
@@ -232,7 +232,7 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                           if (part.state === "output-available") {
                             const output = part.output as { count: number; products: Product[]; message: string };
                             if (output.products?.length) {
-                              outside.push(
+                              inside.push(
                                 <div key={`grid-${callId}-${i}`} className="w-full">
                                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full mt-2">
                                     {output.products.map((product) => (
@@ -290,19 +290,29 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                         }
                         case "tool-viewCart": {
                           const callId = part.toolCallId;
+                          
+                          // Render the live cart view as a separate block below the message bubble
+                          if (part.state === "output-available") {
+                            inside.push(
+                              <div key={`view-${callId}-${i}`} className="w-full">
+                                <InlineCartView cart={cart} live={isNewMsg} />
+                              </div>
+                            );
+                          }
+                          else {
                           inside.push(
                             <Tool key={`tool-${callId}-${i}`}>
                               <ToolHeader title="viewCart" type={part.type} state={part.state} />
                               <ToolContent>
-                                {part.state === "output-available" && (
-                                  <InlineCartView cart={cart} live={isNewMsg} />
-                                )}
+                                {part.state === "input-available" && <ToolInput input={part.input} />}
                                 {part.state === "output-error" && (
                                   <div className="text-sm text-destructive">Error: {part.errorText}</div>
                                 )}
                               </ToolContent>
                             </Tool>
                           );
+                        }
+                          
                           break;
                         }
                         case "tool-registerProduct": {
@@ -375,28 +385,30 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                         }
                         case "tool-finalizePurchase": {
                           const callId = part.toolCallId;
-                          inside.push(
-                            <Tool key={`tool-${callId}-${i}`}>
-                              <ToolHeader title="finalizePurchase" type={part.type} state={part.state} />
-                              <ToolContent>
-                                {part.state === "input-available" && (
-                                  <div className="text-sm text-muted-foreground italic">Preparing checkout...</div>
-                                )}
-                                {part.state === "output-available" && (
-                                  <CheckoutSummary
-                                    cart={cart}
-                                    live={isNewMsg}
-                                    status={toolStatus[callId]}
-                                    onConfirm={() => setToolStatus((s) => ({ ...s, [callId]: "confirmed" }))}
-                                    onCancel={() => setToolStatus((s) => ({ ...s, [callId]: "canceled" }))}
-                                  />
-                                )}
-                                {part.state === "output-error" && (
-                                  <div className="text-sm text-destructive">Error finalizing purchase: {part.errorText}</div>
-                                )}
-                              </ToolContent>
-                            </Tool>
-                          );
+                          if (part.state === "output-available") {
+                            inside.push(
+                              <CheckoutSummary
+                                key={`checkout-${callId}-${i}`}
+                                cart={cart}
+                                live={isNewMsg}
+                                status={toolStatus[callId]}
+                                onConfirm={() => setToolStatus((s) => ({ ...s, [callId]: "confirmed" }))}
+                                onCancel={() => setToolStatus((s) => ({ ...s, [callId]: "canceled" }))}
+                              />
+                            );
+                          } else {
+                            inside.push(
+                              <Tool key={`tool-${callId}-${i}`}>
+                                <ToolHeader title="finalizePurchase" type={part.type} state={part.state} />
+                                <ToolContent>
+                                  {part.state === "input-available" && <ToolInput input={part.input} />}
+                                  {part.state === "output-error" && (
+                                    <div className="text-sm text-destructive">Error finalizing purchase: {part.errorText}</div>
+                                  )}
+                                </ToolContent>
+                              </Tool>
+                            );
+                          }
                           break;
                         }
                         default:
@@ -406,12 +418,13 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                   }
 
                   return (
-                    <Message key={message.id} from={message.role}>
-                      <MessageContent>
-                        {inside}
-                      </MessageContent>
-                      {outside.length > 0 && <div className="w-full mt-2 space-y-2">{outside}</div>}
-                    </Message>
+                    <div key={message.id} className="w-full">
+                      <Message from={message.role}>
+                        <MessageContent>
+                          {inside}
+                        </MessageContent>
+                      </Message>
+                    </div>
                   );
                 })}
                 
