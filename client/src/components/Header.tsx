@@ -43,7 +43,7 @@ export function Header() {
     }
   }, [isLight]);
   const handleNewChat = () => {
-    window.dispatchEvent(new CustomEvent("new-chat"));
+    navigate("/chat");
   };
   return (
     <header className="h-14 flex items-center justify-between px-4 bg-card/50 backdrop-blur-sm">
