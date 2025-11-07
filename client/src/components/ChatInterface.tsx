@@ -16,6 +16,7 @@ import {
 } from "@/components/ai-elements/conversation";
 import { Message, MessageContent } from "@/components/ai-elements/message";
 import { Response } from "@/components/ai-elements/response";
+import { Loader } from "@/components/ai-elements/loader";
 import { Tool, ToolContent, ToolHeader, ToolInput, ToolOutput } from "@/components/ai-elements/tool";
 import { InlineCartView } from "@/components/chat-tools/InlineCartView";
 import { CheckoutSummary } from "@/components/chat-tools/CheckoutSummary";
@@ -426,11 +427,23 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                         <MessageContent>
                           {inside}
                         </MessageContent>
-                      </Message>
+                      </Message>  
                     </div>
                   );
                 })}
-                
+
+                {hasMessages && (status === "submitted" || status === "streaming") && (
+                  <div className="w-full">
+                    <Message from="assistant">
+                      <MessageContent>
+                        <div className="inline-flex items-center gap-2 text-muted-foreground">
+                          <Loader size={16} aria-label="Assistant is typing" />
+                          <span className="text-sm">Assistant is typing…</span>
+                        </div>
+                      </MessageContent>
+                    </Message>
+                  </div>
+                )}
               </div>
             </ConversationContent>
             <ConversationScrollButton />
