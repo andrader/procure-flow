@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { convertToModelMessages, streamText, stepCountIs, type UIMessage, type StopCondition, TypeValidationError } from "ai";
+import { convertToModelMessages, generateObject, streamText, stepCountIs, type UIMessage, type StopCondition, TypeValidationError } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { validateUIMessages } from 'ai';
 import { z } from "zod";
@@ -55,7 +55,7 @@ const MainAgent: AgentOptions = {
 
 // update user address, payment methods etc
 const UserRegistrationAgent: AgentOptions = {
-  model: 'openai/gpt-5-nano',
+  model: openai("gpt-5-nano"),
   system: `You are ProcureFlow's user account assistant. You help users manage their payment methods and shipping addresses.
   When users ask about updating their account:
   1. Use the appropriate tools to add, change, or remove payment methods and shipping addresses.
@@ -75,6 +75,67 @@ const UserRegistrationAgent: AgentOptions = {
     removeShippingAddress: removeShippingAddress,
     
   },
+};
+
+type AgentDescription = [options: AgentOptions, description: string];
+
+const AgentsMap: Record<string, AgentDescription> = {
+    main_agent: [
+        MainAgent,
+        "Assist with procurement tasks like searching products, adding to cart, and checking out."
+    ],
+    user_account_agent: [
+        UserRegistrationAgent,
+        "Help users manage their payment methods and shipping addresses."
+    ],
+};
+
+async function getAppropriateAgent(message: UIMessage): Promise<AgentOptions> {
+    const model = openai('gpt-5-nano');
+
+    // get the text TextUIPart
+    const textPart = message.parts.find(part => part.type === 'text')?.text;
+
+    if (!textPart) {
+        throw new Error("No text part found in the message");
+    }
+
+    const agent_options: readonly string[] = Object.keys(AgentsMap);
+
+    // string key: description map
+    const agentDescriptions = agent_options.map(option => {
+        const description = AgentsMap[option as keyof typeof AgentsMap]?.[1];
+        return `- ${option}: ${description}`;
+    }).join('\n');
+
+    const prompt = `Choose the most appropriate agent to handle this customer query:
+"${textPart}"
+
+---
+Possible agents are:
+${agentDescriptions}`;
+
+    console.log("Agent selection prompt:", prompt);
+
+    // First step: Classify the query type
+    const { object: classification } = await generateObject({
+    model,
+    schema: z.object({
+        reasoning: z.string(),
+        type: z.enum(agent_options as [string, ...string[]])
+    }),
+    prompt: prompt,
+    });
+
+    // Route to appropriate agent based on classification
+    console.log("Classified message as type:", classification.type);
+    const agentOptions = AgentsMap[classification.type as keyof typeof AgentsMap]?.[0];
+
+    if (!agentOptions) {
+        throw new Error(`No agent found for type: ${classification.type}`);
+    }
+
+    return agentOptions
 };
 
 
@@ -120,16 +181,18 @@ export const handleChat = async (req: Request, res: Response) => {
                 throw error;
             }
         }
-                
 
+        // Determine the appropriate agent for the latest message
+        const agentOptions = await getAppropriateAgent(message);
+
+        // Stream response from the selected agent
         const result = streamText({
-            // unpack agent options
-            ...MainAgent,
-            // messages converted to model format
+            ...agentOptions,
             messages: convertToModelMessages(
                 messages
             ),
         });
+        
         
 
         // Convert to Response object and pipe to Express response
