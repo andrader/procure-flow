@@ -299,7 +299,7 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                           if (part.state === "output-available") {
                             inside.push(
                               <div key={`view-${callId}-${i}`} className="w-full">
-                                <InlineCartView cart={cart} live={isNewMsg} />
+                                <InlineCartView cart={cart} />
                               </div>
                             );
                           }
@@ -394,7 +394,6 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                               <CheckoutSummary
                                 key={`checkout-${callId}-${i}`}
                                 cart={cart}
-                                live={isNewMsg}
                                 status={toolStatus[callId]}
                                 onConfirm={() => setToolStatus((s) => ({ ...s, [callId]: "confirmed" }))}
                                 onCancel={() => setToolStatus((s) => ({ ...s, [callId]: "canceled" }))}

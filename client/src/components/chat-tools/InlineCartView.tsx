@@ -4,8 +4,6 @@ import type { CartItem } from "@/contexts/CartContext";
 export interface InlineCartViewProps {
   /** Items currently in the cart */
   cart: Readonly<CartItem[]>;
-  /** Whether this snapshot reflects the latest state (controls the badge). */
-  live?: boolean;
   /** Optional root className */
   className?: string;
   /** Custom empty-cart message */
@@ -24,7 +22,6 @@ export interface InlineCartViewProps {
  */
 export function InlineCartView({
   cart,
-  live = true,
   className,
   emptyText = "Your cart is empty.",
   showHeader = true,
@@ -40,9 +37,6 @@ export function InlineCartView({
         {showHeader && (
           <div className="flex items-center justify-between mb-2">
             <div className="font-medium">Cart</div>
-            <span className={`text-xs ${live ? "text-emerald-600" : "text-amber-600"}`}>
-              {live ? "Live snapshot" : "Stale view"}
-            </span>
           </div>
         )}
         {cart.length === 0 ? (

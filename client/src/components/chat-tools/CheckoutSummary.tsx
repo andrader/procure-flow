@@ -4,8 +4,6 @@ import type { CartItem } from "@/contexts/CartContext";
 export interface CheckoutSummaryProps {
   /** Cart items included in the summary */
   cart: Readonly<CartItem[]>;
-  /** Whether snapshot is live */
-  live?: boolean;
   /** Shipping address display string */
   shippingAddress?: string;
   /** Payment method display string */
@@ -32,7 +30,6 @@ export interface CheckoutSummaryProps {
  */
 export function CheckoutSummary({
   cart,
-  live = true,
   shippingAddress = "John Doe, 123 Main St, Springfield, USA",
   paymentMethod = "Visa •••• 4242",
   status,
@@ -50,7 +47,6 @@ export function CheckoutSummary({
     <div className={"w-full space-y-3 " + (className ?? "")}>      
       <div className="flex items-center justify-between">
         <div className="font-medium">Checkout Summary</div>
-        <span className={`text-xs ${live ? "text-emerald-600" : "text-amber-600"}`}>{live ? "Live snapshot" : "Stale view"}</span>
       </div>
       <div className="space-y-1 text-sm">
         {empty ? (
