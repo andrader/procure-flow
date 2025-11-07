@@ -18,6 +18,34 @@ Runtime data flow:
 4. Conversations are persisted as JSON files under `server/.chats/{id}.json` via a simple file store (`server/src/lib/chat-store.ts`).
 5. In production, the server serves the built SPA from `client/dist` and provides an SPA fallback for non-`/api/*` routes.
 
+### Diagram: application architecture
+
+```mermaid
+flowchart LR
+	subgraph Client["Client (Vite + React + @ai-sdk/react)"]
+		UI["Chat UI & Pages"]
+	end
+
+	subgraph Server["Server (Express 5 + AI SDK Core)"]
+		APIRoutes["REST APIs:\n/api/products, /api/register, /api/checkout, /api/transcribe"]
+		ChatRoute["POST /api/chat (stream)"]
+		Handler["Chat handler (streamText, generateObject)"]
+		ToolSet["Tools: search/register/cart/checkout"]
+		Store[(".chats JSON store")]
+		Static["Serve client/dist + SPA fallback"]
+	end
+
+	OpenAI[("OpenAI API")]
+
+	UI -->|fetch| APIRoutes
+	UI -->|stream| ChatRoute
+	ChatRoute --> Handler
+	Handler --> ToolSet
+	Handler --> OpenAI
+	APIRoutes --> Store
+	Static --> UI
+```
+
 Key API routes (server):
 
 - `GET /api/health` – health check
@@ -76,6 +104,31 @@ Domain tools (server-executed with AI SDK):
 	- Trade-offs:
 		- Cons: adds one extra model roundtrip for routing, increasing latency on first token for each user message.
 		- Pros: allows using faster/cheaper models per agent, simpler prompts, fewer tools per context, better reliability, and lower cost at scale.
+
+#### Diagram: router and agents
+
+```mermaid
+flowchart TD
+	Msg[("User UIMessage")]
+	Router["Router model (generateObject)\nclassifies to agent"]
+	Msg --> Router
+
+	subgraph main_agent["Main agent"]
+		MAtools["Tools:\nsearchProducts, registerProduct,\naddToCart/removeFromCart/viewCart,\nfinalizePurchase"]
+	end
+
+	subgraph user_account_agent["User account agent"]
+		UAtools["Tools:\nadd/change/remove payment,\nadd/change/remove address"]
+	end
+
+	Router -->|"main_agent"| main_agent
+	Router -->|"user_account_agent"| user_account_agent
+
+	main_agent --> Stream["streamText -> UI message parts"]
+	user_account_agent --> Stream
+
+	Stream --> UI["Client renders components\nfrom tool parts"]
+```
 
 - File-based chat storage
 	- Decision: simple JSON files under `server/.chats` for quick iteration.
