@@ -1,6 +1,18 @@
-# ProcureFlow
+# ProcureFlow Case Demo
 
-ProcureFlow is an AI-powered procurement platform for enterprise materials and services management.
+ProcureFlow is an AI-powered shopping assistant demo application built with a monorepo architecture using Vite + React for the frontend and Express 5 for the backend. It leverages the Vercel's AI SDK Core and UI libraries to create a chat interface that allows users to search for products, manage their cart, and finalize purchases through natural language interactions.
+
+## Main features
+
+- AI-powered chat interface shopping assistant
+- Support for audio input via OpenAI Whisper
+- The assistant can help users 
+    - search for products
+    - add/remove items from cart
+    - view cart contents
+    - finalize purchases
+    - manage payment methods and shipping addresses (even though the agent and tools exist, I did actually implment the data persistence for them and api endpoints)
+- search page /search with AI :sparkles: button to start a chat minimized (just UI)
 
 ## Architecture overview
 
@@ -18,7 +30,7 @@ Runtime data flow:
 4. Conversations are persisted as JSON files under `server/.chats/{id}.json` via a simple file store (`server/src/lib/chat-store.ts`).
 5. In production, the server serves the built SPA from `client/dist` and provides an SPA fallback for non-`/api/*` routes.
 
-### Diagram: application architecture
+## Application architecture
 
 ```mermaid
 flowchart LR
@@ -57,6 +69,36 @@ Key API routes (server):
 - `POST /api/transcribe` – audio transcription (OpenAI Whisper)
 - `POST /api/chat/create` – create a new chat id
 - `GET /api/chat/:id` – load chat history by id
+
+
+## Agents architecture
+
+The system uses a Router model to classify user messages and delegate them to specialized agents with focused toolsets.
+
+```mermaid
+flowchart TD
+	Msg[("User UIMessage")]
+	Router["Router model (generateObject)\nclassifies to agent"]
+	Msg --> Router
+
+	subgraph main_agent["Main agent"]
+		MAtools["Tools:\nsearchProducts, registerProduct,\naddToCart/removeFromCart/viewCart,\nfinalizePurchase"]
+	end
+
+	subgraph user_account_agent["User account agent"]
+		UAtools["Tools:\nadd/change/remove payment,\nadd/change/remove address"]
+	end
+
+	Router -->|"main_agent"| main_agent
+	Router -->|"user_account_agent"| user_account_agent
+
+	main_agent --> Stream["streamText -> UI message parts"]
+	user_account_agent --> Stream
+
+	Stream --> UI["Client renders components\nfrom tool parts"]
+```
+
+
 
 ## Stack and AI tools used
 
@@ -105,30 +147,10 @@ Domain tools (server-executed with AI SDK):
 		- Cons: adds one extra model roundtrip for routing, increasing latency on first token for each user message.
 		- Pros: allows using faster/cheaper models per agent, simpler prompts, fewer tools per context, better reliability, and lower cost at scale.
 
-#### Diagram: router and agents
 
-```mermaid
-flowchart TD
-	Msg[("User UIMessage")]
-	Router["Router model (generateObject)\nclassifies to agent"]
-	Msg --> Router
-
-	subgraph main_agent["Main agent"]
-		MAtools["Tools:\nsearchProducts, registerProduct,\naddToCart/removeFromCart/viewCart,\nfinalizePurchase"]
-	end
-
-	subgraph user_account_agent["User account agent"]
-		UAtools["Tools:\nadd/change/remove payment,\nadd/change/remove address"]
-	end
-
-	Router -->|"main_agent"| main_agent
-	Router -->|"user_account_agent"| user_account_agent
-
-	main_agent --> Stream["streamText -> UI message parts"]
-	user_account_agent --> Stream
-
-	Stream --> UI["Client renders components\nfrom tool parts"]
-```
+- The main page is the chat interface. The /search page is a secondary page with a button to start a chat minimized (but right now, it is just the UI, no functionality).
+    - Decision: keep the chat as the primary interface to showcase the AI assistant capabilities, with a secondary search page for additional functionality.
+    - Trade-off: simpler user experience focused on chat, but may limit discoverability of other features.
 
 - File-based chat storage
 	- Decision: simple JSON files under `server/.chats` for quick iteration.
