@@ -30,7 +30,6 @@ Runtime data flow:
 2. The server uses AI SDK Core (`ai`) with OpenAI (`@ai-sdk/openai`) to run the assistant, perform multi-step tool calling, and stream back UI-friendly messages.
 3. Domain tools (search, cart, checkout, registration) are executed server-side; their results are rendered as UI components on the client.
 4. Conversations are persisted as JSON files under `server/.chats/{id}.json` via a simple file store (`server/src/lib/chat-store.ts`).
-5. In production, the server serves the built SPA from `client/dist` and provides an SPA fallback for non-`/api/*` routes.
 
 ## Application architecture
 
@@ -46,7 +45,6 @@ flowchart LR
 		Handler["Chat handler (streamText, generateObject)"]
 		ToolSet["Tools: search/register/cart/checkout"]
 		Store[(".chats JSON store")]
-		Static["Serve client/dist + SPA fallback"]
 	end
 
 	OpenAI[("OpenAI API")]
@@ -184,9 +182,6 @@ Domain tools (server-executed with AI SDK):
 	- Decision: simple JSON files under `server/.chats` for quick iteration.
 	- Trade-off: not suitable for horizontal scale or durability; swap with a DB in production.
 
-- Single server for API + static SPA (prod)
-	- Decision: Express serves `client/dist` and provides SPA fallback.
-	- Trade-off: simpler deploys; less flexibility than separate CDN + API services.
 
 
 
@@ -240,8 +235,3 @@ Run production server locally
 ```sh
 node server/dist/index.js
 ```
-
-Notes
-
-- SPA routing: non-`/api/*` routes fall back to `client/dist/index.html` so React Router can handle deep links.
-- If you deploy behind another web server (NGINX, etc.), route `/api/*` to the Node/Express server and serve other paths from `client/dist` (or proxy to the same Express instance).
