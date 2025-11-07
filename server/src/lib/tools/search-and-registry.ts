@@ -9,17 +9,26 @@ export const searchProducts = tool({
   description: "Search items in the procurement catalog by query.",
   inputSchema: z.object({
     query: z.string().describe("The search query to find products"),
+    results: z
+      .number()
+      .int()
+      .min(1)
+      .max(10)
+      .default(1)
+      .describe("Number of results to return (1-10). Defaults to 1."),
   }),
-  async execute({ query }: { query: string }) {
+  async execute({ query, results = 1 }: { query: string; results?: number }) {
+    const limit = Math.max(1, Math.min(10, Number(results ?? 1)));
 
-    console.log(`[Tool] Searching products for: "${query}"`);
+    console.log(`[Tool] Searching products for: "${query}" (limit ${limit})`);
     const filtered = filterProductsByQuery(products as Product[], query);
 
-    console.log(`[Tool] Found ${filtered.length} products. Returning top 10.`);
+    const returned = Math.min(filtered.length, limit);
+    console.log(`[Tool] Found ${filtered.length} products. Returning ${returned}.`);
 
     return {
       count: filtered.length,
-      products: filtered.slice(0, 10).map((p) => ({
+      products: filtered.slice(0, limit).map((p) => ({
         id: p.id,
         name: p.name,
         category: p.category,
@@ -31,10 +40,9 @@ export const searchProducts = tool({
       message:
         filtered.length === 0
           ? `No products found for "${query}"`
-          : `Found ${filtered.length} product${filtered.length === 1 ? "" : "s"} matching "${query}"`,
+          : `Found ${filtered.length} product${filtered.length === 1 ? "" : "s"} matching "${query}". Returning ${returned}.`,
     };
-  }
-
+  },
 });
 
 
