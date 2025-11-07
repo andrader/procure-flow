@@ -20,9 +20,10 @@ export function Header() {
   const [isLight, setIsLight] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem("theme");
-      return saved === "light";
+      // Default to light when no preference is saved
+      return saved ? saved === "light" : true;
     } catch {
-      return false;
+      return true;
     }
   });
 

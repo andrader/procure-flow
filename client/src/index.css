@@ -55,7 +55,7 @@ All colors MUST be HSL.
   }
   /* Light theme overrides */
   .light {
-    --background: 0 0% 95%;
+    --background: 0 0% 98%;
     --foreground: 222.2 47.4% 11.2%;
 
     --card: 0 0% 100%;

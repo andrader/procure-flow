@@ -519,11 +519,6 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                 <SharedPromptInput onSubmit={handleSubmit} textareaRef={textareaRef} accept="image/*" multiple status={status} />
               </div>
               <div className="grid grid-cols-2 gap-3 mt-6">
-                <Button variant="action" className="h-auto py-4 px-5 flex-col items-start gap-2" onClick={() => textInput.setInput("Show me ")}>
-                  <List className="w-5 h-5" />
-                  <span className="text-sm font-medium">Search Catalog</span>
-                  <span className="text-xs text-muted-foreground">Find materials & services</span>
-                </Button>
                 <Button variant="action" className="h-auto py-4 px-5 flex-col items-start gap-2" onClick={() => setRegisterOpen(true)}>
                   <Package className="w-5 h-5" />
                   <span className="text-sm font-medium">Register Item</span>
@@ -533,11 +528,6 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                   <ShoppingCart className="w-5 h-5" />
                   <span className="text-sm font-medium">View Cart</span>
                   <span className="text-xs text-muted-foreground">{totalCount} item{totalCount !== 1 ? "s" : ""}</span>
-                </Button>
-                <Button variant="action" className="h-auto py-4 px-5 flex-col items-start gap-2" onClick={() => setCheckoutOpen(true)} disabled={cart.length === 0}>
-                  <CreditCard className="w-5 h-5" />
-                  <span className="text-sm font-medium">Smart Checkout</span>
-                  <span className="text-xs text-muted-foreground">Process your order</span>
                 </Button>
               </div>
             </div>
