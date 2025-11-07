@@ -91,10 +91,6 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
 app.use(express.static(path.join(__dirname, "../../client/dist")));
 
 
-app.get("/", (req: Request, res: Response) => {
-  res.sendFile(path.join(__dirname, "../../client/dist", "index.html"));
-});
-
 
 // Health
 app.get("/api/health", (req: Request, res: Response) => {
@@ -183,6 +179,16 @@ app.get("/api/chat/:id", async (req: Request, res: Response) => {
   } catch (e) {
     res.status(404).json({ messages: [] });
   }
+});
+
+// Serve index.html for the root
+app.get("/", (_req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, "../../client/dist", "index.html"));
+});
+
+// SPA fallback: for any non-API route, return index.html so React Router can handle it
+app.get(/^\/(?!api\/).*/, (_req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, "../../client/dist", "index.html"));
 });
 
 

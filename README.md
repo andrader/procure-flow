@@ -50,6 +50,8 @@ bun run build:all
 
 The server serves static files from `client/dist`.
 
+SPA routing: The server is configured with an SPA fallback so direct links like `/chat` or `/chat/:id` load `index.html` and are handled client-side by React Router. When deploying behind another web server (e.g., Nginx), ensure non-`/api/*` routes fall back to `client/dist/index.html`.
+
 ## What technologies are used for this project?
 
 This project is built with:
