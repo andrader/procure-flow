@@ -140,10 +140,6 @@ export default function SearchPage() {
             setShowChat(false);
             setInitialChatMessage(undefined);
           }}
-          onOpenFullPage={() => {
-            // Navigate to full chat page (you can implement this route)
-            navigate("/chat");
-          }}
           initialMessage={initialChatMessage}
         />
       </div>
@@ -256,10 +252,6 @@ export default function SearchPage() {
         onClose={() => {
           setShowChat(false);
           setInitialChatMessage(undefined);
-        }}
-        onOpenFullPage={() => {
-          // Navigate to full chat page (you can implement this route)
-          navigate("/chat");
         }}
         initialMessage={initialChatMessage}
       />
