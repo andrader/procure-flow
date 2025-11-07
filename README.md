@@ -71,6 +71,12 @@ Domain tools (server-executed with AI SDK):
 	- Decision: stream AI messages and typed tool parts to the client to render dynamic UI (cart, checkout, confirmations).
 	- Trade-off: more moving pieces (typed parts, client rendering) but better UX and controllability vs. plain-text chat.
 
+- Router + specialized agents
+	- Decision: a lightweight router model first classifies each user message and selects a specialized agent (see `server/src/handlers/chat.ts`). Each agent has a focused system prompt and a small set of tools (e.g., `main_agent` for catalog/cart/checkout and `user_account_agent` for addresses/payment).
+	- Trade-offs:
+		- Cons: adds one extra model roundtrip for routing, increasing latency on first token for each user message.
+		- Pros: allows using faster/cheaper models per agent, simpler prompts, fewer tools per context, better reliability, and lower cost at scale.
+
 - File-based chat storage
 	- Decision: simple JSON files under `server/.chats` for quick iteration.
 	- Trade-off: not suitable for horizontal scale or durability; swap with a DB in production.
@@ -79,9 +85,7 @@ Domain tools (server-executed with AI SDK):
 	- Decision: Express serves `client/dist` and provides SPA fallback.
 	- Trade-off: simpler deploys; less flexibility than separate CDN + API services.
 
-- Security headers and CORS
-	- Decision: lightweight CORS and a permissive CSP suited for local/dev.
-	- Trade-off: ease of development vs. stricter security; lock down CSP and origins for production.
+
 
 ## Setup and run
 
