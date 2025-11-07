@@ -2,6 +2,8 @@
 
 ProcureFlow is an AI-powered shopping assistant demo application built with a monorepo architecture using Vite + React for the frontend and Express 5 for the backend. It leverages the Vercel's AI SDK Core and UI libraries to create a chat interface that allows users to search for products, manage their cart, and finalize purchases through natural language interactions.
 
+<video controls src="assets/intro.mp4" title="Title"></video>
+
 ## Main features
 
 - AI-powered chat interface shopping assistant
