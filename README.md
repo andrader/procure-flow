@@ -206,6 +206,23 @@ Environment
 - `OPENAI_API_KEY` – required for `/api/chat` and `/api/transcribe` to work.
 - Optional: `PORT` (defaults to `4000`) for the server.
 
+Environment file
+
+- Location: create a `.env` file in `server/.env` (loaded by `dotenv` in the server).
+- Starter template: `server/.env.example`.
+- Quick setup:
+
+```sh
+# copy the template and fill in your key
+cp server/.env.example server/.env
+# then edit server/.env and set OPENAI_API_KEY
+```
+
+Notes
+
+- The API key is used only on the server; it is not required in the client app.
+- Do not commit your `.env` file.
+
 Install (workspaces)
 
 ```sh
