@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Package, CreditCard, List } from "lucide-react";
+import { ShoppingCart, Package, CreditCard, List, CheckCircle2 } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RegisterItemForm } from "@/components/RegisterItemForm";
@@ -71,13 +71,14 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
   const navigate = useNavigate();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { textInput } = usePromptInputController();
-  const { cart, open: openCart, totalCount, addToCart } = useCart();
+  const { cart, open: openCart, totalCount, addToCart, clearCart } = useCart();
   const [registerOpen, setRegisterOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const processedToolCalls = useRef<Set<string>>(new Set());
   const sentInitialRef = useReactRef(false);
   const seenMessageIds = useRef<Set<string>>(new Set((initialMessages ?? []).map((m) => m.id)));
   const [toolStatus, setToolStatus] = useState<Record<string, "confirmed" | "canceled" | undefined>>({});
+  const [inlineCheckoutSuccess, setInlineCheckoutSuccess] = useState(false);
 
   const { messages, sendMessage, status, setMessages } = useChat({
     id,
@@ -145,7 +146,34 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {hasMessages ? (
+      {inlineCheckoutSuccess ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <div className="mb-4 flex items-center justify-center">
+            <div className="h-16 w-16 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-lg">
+              <CheckCircle2 className="h-9 w-9" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-semibold">Order confirmed</h2>
+          <p className="text-muted-foreground mt-2 max-w-md">
+            Thanks! Your order has been placed successfully. You can start a new conversation anytime.
+          </p>
+          <div className="mt-6">
+            <Button
+              onClick={() => {
+                try {
+                  window.dispatchEvent(new Event("new-chat"));
+                } catch (err) {
+                  // ignore dispatch errors
+                }
+                navigate("/chat");
+                setInlineCheckoutSuccess(false);
+              }}
+            >
+              Start new chat
+            </Button>
+          </div>
+        </div>
+      ) : hasMessages ? (
         <>
           <Conversation>
             <AutoScroll messages={messages} />
@@ -395,7 +423,11 @@ function ChatContent({ id, initialMessages, initialSubmit }: ChatInterfaceProps)
                                 key={`checkout-${callId}-${i}`}
                                 cart={cart}
                                 status={toolStatus[callId]}
-                                onConfirm={() => setToolStatus((s) => ({ ...s, [callId]: "confirmed" }))}
+                                onConfirm={() => {
+                                  setToolStatus((s) => ({ ...s, [callId]: "confirmed" }));
+                                  clearCart();
+                                  setInlineCheckoutSuccess(true);
+                                }}
                                 onCancel={() => setToolStatus((s) => ({ ...s, [callId]: "canceled" }))}
                               />
                             );
