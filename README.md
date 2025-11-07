@@ -12,7 +12,9 @@ ProcureFlow is an AI-powered shopping assistant demo application built with a mo
     - view cart contents
     - finalize purchases
     - manage payment methods and shipping addresses (even though the agent and tools exist, I did actually implment the data persistence for them and api endpoints)
-- search page /search with AI :sparkles: button to start a chat minimized (just UI)
+- chat persistence as JSON files.
+- UI components for cart, checkout, success messages inside the chat flow
+- A demo search page /search with AI :sparkles: button overlay to start a chat minimized (just UI)
 
 ## Architecture overview
 
