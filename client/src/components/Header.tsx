@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { Bell, Moon, Sun, Settings, SquarePen, ShoppingCart } from "lucide-react";
+import { Moon, Sun, Settings, SquarePen, ShoppingCart } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCart } from "@/contexts/CartContext";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export function Header() {
@@ -107,10 +107,6 @@ export function Header() {
               {totalCount}
             </span>
           )}
-        </Button>
-        <Button variant="ghost" size="icon" className="w-9 h-9 relative">
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full"></span>
         </Button>
         <Button variant="ghost" size="icon" className="w-9 h-9" onClick={() => setIsLight((v) => !v)} aria-label="Toggle theme" title="Toggle theme">
           {isLight ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
