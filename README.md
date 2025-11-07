@@ -184,6 +184,13 @@ Domain tools (server-executed with AI SDK):
 	- Decision: simple JSON files under `server/.chats` for quick iteration.
 	- Trade-off: not suitable for horizontal scale or durability; swap with a DB in production.
 
+- Product search endpoint (`GET /api/products` in `server/src/index.ts`)
+	- Decision: implement a lightweight in-memory search that linearly filters an array of `Product` objects via `filterProductsByQuery` (simple `includes` / field matching) and returns a normalized shape to the client. Keeps zero external dependencies and works instantly on small catalogs.
+	- Trade-offs:
+		- Pros: extremely fast to prototype, no indexing step, trivial to extend with a couple more fields; stable and predictable results (no fuzzy ranking surprises).
+		- Cons: O(n) scan per request, limited relevance quality (no stemming, typo tolerance, weighting, semantic matching), and memory-bound scaling. For larger catalogs this becomes latency-sensitive and prevents advanced UX (facets, semantic suggestions).
+		- Future improvements: introduce an indexed store (e.g. Postgres + trigram/fts, Meilisearch, or Elasticsearch) for full-text + filters; add fuzzy/typo tolerance; optionally layer semantic/vector search (e.g. OpenAI embeddings / pgvector) to handle intent-driven queries ("durable lightweight laptop"). The current endpoint shape can evolve by adding ranking metadata (score) and facets without breaking clients if fields are optional.
+
 
 
 
