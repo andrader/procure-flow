@@ -8,7 +8,7 @@ ProcureFlow is an AI-powered shopping assistant demo application built with a mo
 - Support for audio input via OpenAI Whisper
 - The assistant can help users 
     - search for products
-    - add/remove items from cart
+    - add items to cart
     - view cart contents
     - finalize purchases
     - manage payment methods and shipping addresses (even though the agent and tools exist, I did actually implment the data persistence for them and api endpoints)
@@ -101,6 +101,32 @@ flowchart TD
 ```
 
 
+
+## AI tools
+
+The system uses typed, server-executed domain tools alongside client-side UI tool components:
+
+- Server-side domain tools (executed by the AI agent via AI SDK Core)
+	- Implement business logic and return typed "parts" that the client renders.
+	- Live under `server/src/lib/tools/*` and are wired in `server/src/handlers/chat.ts`.
+	- Examples: `searchProducts`, `registerProduct`, `addToCart`, `removeFromCart`, `viewCart`, `finalizePurchase`, and the user account tools for payment methods and shipping addresses.
+
+- Client-side UI tool components (rendered in the chat stream)
+	- Consume streamed tool "parts" and render interactive UI (cards, summaries, confirmations).
+	- Live under `client/src/components/chat-tools/*` and `client/src/components/ai-elements/*`.
+	- Examples: `InlineCartView`, `CheckoutSummary`, plus message/prompt/loader blocks that compose the chat experience.
+
+How it fits together:
+
+1. The assistant runs on the server and calls domain tools as needed (search, cart actions, checkout, etc.).
+2. Tool results are streamed back as UI-friendly message parts.
+3. The React client renders those parts using the UI tool components and collects any follow-up user input.
+
+## Current limitations
+
+- removeFromCart: not functioning yet.
+- viewCart: renders the cart to the user, but the LLM currently does not have visibility into cart contents (it relies on the client UI to show them).
+- Payments/addresses tools: add/change/remove payment methods and shipping addresses are placeholders and not wired to persistence, so they effectively don't work.
 
 ## Stack and AI tools used
 
