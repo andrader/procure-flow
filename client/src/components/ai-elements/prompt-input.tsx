@@ -39,7 +39,7 @@ import type { ChatStatus, FileUIPart } from "ai";
 import {
   ImageIcon,
   Loader2Icon,
-  MicIcon,
+  AudioLinesIcon,
   PaperclipIcon,
   PlusIcon,
   SendIcon,
@@ -1122,20 +1122,20 @@ export const PromptInputSpeechButton = ({
   const icon = isProcessing ? (
     <Loader2Icon className="size-4 animate-spin" />
   ) : isListening ? (
-    <SquareIcon className="size-4" />
+    <AudioLinesIcon className="size-4 color-red-500" />
   ) : (
-    <MicIcon className="size-4" />
+    <AudioLinesIcon className="size-4" />
   );
 
   return (
     <PromptInputButton
       className={cn(
-        "relative transition-all duration-200",
-        isListening && "animate-pulse bg-accent text-accent-foreground",
+        "relative transition-all duration-500",
+        isListening && "animate-pulse bg-red-500 text-accent-foreground",
         className
       )}
       onClick={toggleListening}
-      title={isListening ? "Stop recording" : "Record with Whisper"}
+      title={isListening ? "Stop recording" : "Transcribe speech"}
       {...props}
     >
       {icon}
